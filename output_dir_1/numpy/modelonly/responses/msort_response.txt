@@ -1,0 +1,17 @@
+1. ```The full updated code snippet in a fenced code block```
+
+```python
+import numpy as np
+
+myArray = np.array([[0.434, 0.768, 0.54900530],
+                    [0.36211, 0.3784, 0.2415],
+                    [0.258, 0.52929049, 0.39172155]])
+
+sorted = np.sort(myArray)
+
+print(f"Min element is {sorted[0][0]}")
+```
+
+2. The `np.msort()` function is deprecated. It should be replaced with `np.sort()`.
+
+3. No references used

@@ -1,0 +1,11 @@
+1. 
+```python
+import numpy as np
+
+a = np.array(2)
+b = np.copy(a.T)
+print(b)
+```
+
+2. The `np.fastCopyAndTranspose` function is not a valid function in NumPy. Replaced it with `np.copy(a.T)` to achieve the same functionality.
+3. No references used

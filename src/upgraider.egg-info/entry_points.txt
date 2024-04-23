@@ -1,0 +1,3 @@
+[console_scripts]
+explore_api = apiexploration.run_api_diff:main
+upgraider_brush = upgraider.update_brushes_code:main

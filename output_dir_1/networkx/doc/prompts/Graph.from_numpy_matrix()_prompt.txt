@@ -1,0 +1,45 @@
+Given the provided numbered reference information, decide if the provided code needs to be updated.
+Focus only on updates that do not change the code's functionality and are related to outdated, deprecated, or non-existent APIs.
+You must reply in the following exact numbered format.
+1. ```The full updated code snippet in a fenced code block``` or an empty fenced code block if you don't want to update the code
+2. Reason for update (if any)
+3. List of reference numbers used (if any) to update the code. If none of the references below were useful, say 'No references used'
+
+Provided code:
+
+```
+import networkx as nx
+import numpy as np
+
+A = np.matrix([[0, 1, 1, 0, 0], [1, 0, 1, 1, 0], [1, 1, 0, 1, 1], [0, 1, 1, 0, 1], [0, 0, 1, 1, 0]])
+G = nx.from_numpy_matrix(A)
+print(G.edges)
+```
+
+Provided reference information:
+
+
+1. [#5813] OrderedGraph and other Ordered classes are replaced by Graph because Python dicts (and thus networkx graphs) now maintain order.
+2. [#5723] nx.nx_pydot.* will be deprecated in the future if pydot isn't being actively maintained. Users are recommended to use pygraphviz instead.
+3. The numpy.msort function is deprecated. Use np.sort(a, axis=0) instead.
+4. Previous behavior:  In [8]: pd.Series().index Out[8]: Index([], dtype='object')  In [9] pd.DataFrame().axes Out[9]: [Index([], dtype='object'), Index([], dtype='object')] 
+5. Object arrays in sparse matrices now raise an error.
+6. When providing a list of columns of length one to DataFrame.groupby, the keys that are returned by iterating over the resulting DataFrameGroupBy object will now be tuples of length one (47761)
+7. The numpy.fastCopyAndTranspose function has been deprecated. Use the corresponding copy and transpose methods directly:  arr.T.copy() 
+8. Now, the axes return an empty RangeIndex (49572).  In [8]: pd.Series().index Out[8]: Index([], dtype='object')  In [9] pd.DataFrame().axes Out[9]: [Index([], dtype='object'), Index([], dtype='object')] 
+9. Removed the alias scipy.random for numpy.random.
+10. Note that conversion between NumPy integers is unaffected, so that np.array(-1).astype(np.uint8) continues to work and use C integer overflow logic.  For negative values, it will also work to view the array: np.array(-1, dtype=np.int8).view(np.uint8). In some cases, using np.iinfo(np.uint8).max or val % 2**8 may also work well.
+11. Inexact indices into sparse matrices now raise an error.
+12. Many of these did succeed before.  Such code was mainly useful for unsigned integers with negative values such as np.uint8(-1) giving np.iinfo(np.uint8).max.
+13. The scalar type aliases ending in a 0 bit size: np.object0, np.str0, np.bytes0, np.void0, np.int0, np.uint0 as well as np.bool8 are now deprecated and will eventually be removed.
+14. Multidimensional indexing with non-tuple values is not allowed.  Previously, code such as arr[ind] where ind = [[0, 1], [0, 1]] produced a FutureWarning and was interpreted as a multidimensional index (i.e., arr[tuple(ind)]). Now this example is treated like an array index over a single dimension (arr[array(ind)]).  Multidimensional indexing with anything but a tuple was deprecated in NumPy 1.15.
+15. The deprecation for the aliases np.object, np.bool, np.float, np.complex, np.str, and np.int is expired (introduces NumPy 1.20).  Some of these will now give a FutureWarning in addition to raising an error since they will be mapped to the NumPy scalars in the future.
+16. [#5899] The attrs keyword argument will be replaced with keyword only arguments source, target, name, key and link for json_graph/node_link functions.
+17. [#5899] The attrs keyword argument will be replaced with keyword only arguments source, target, name, key and link for json_graph/node_link functions.
+18. scipy.spatial.distance now enforces that the input vectors are one-dimensional.
+19. The methods Series.round, DataFrame.__invert__, Series.__invert__, DataFrame.swapaxes, DataFrame.first, DataFrame.last, Series.first, Series.last and DataFrame.align will now always return new objects (51032)
+20. The methods Series.round, DataFrame.__invert__, Series.__invert__, DataFrame.swapaxes, DataFrame.first, DataFrame.last, Series.first, Series.last and DataFrame.align will now always return new objects (51032)
+21. Enforced disallowing indexing on a Index or positional indexing on a Series producing multi-dimensional objects e.g. obj[:, None], convert to numpy before indexing instead (35141)
+22. Before, constructing an
+
+Your Response:

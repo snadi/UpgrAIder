@@ -1,0 +1,52 @@
+Given the provided numbered reference information, decide if the provided code needs to be updated.
+Focus only on updates that do not change the code's functionality and are related to outdated, deprecated, or non-existent APIs.
+You must reply in the following exact numbered format.
+1. ```The full updated code snippet in a fenced code block``` or an empty fenced code block if you don't want to update the code
+2. Reason for update (if any)
+3. List of reference numbers used (if any) to update the code. If none of the references below were useful, say 'No references used'
+
+Provided code:
+
+```
+import networkx as nx
+
+SG=nx.OrderedGraph()
+SG.add_nodes_from("HelloWorld")
+SG.add_edges_from([(0, 1), (1, 2), (3,4), (6,8)])
+print(SG)
+```
+
+Provided reference information:
+
+
+1. [#5813] OrderedGraph and other Ordered classes are replaced by Graph because Python dicts (and thus networkx graphs) now maintain order.
+2. [#5723] nx.nx_pydot.* will be deprecated in the future if pydot isn't being actively maintained. Users are recommended to use pygraphviz instead.
+3. [#5899] The attrs keyword argument will be replaced with keyword only arguments source, target, name, key and link for json_graph/node_link functions.
+4. [#5899] The attrs keyword argument will be replaced with keyword only arguments source, target, name, key and link for json_graph/node_link functions.
+5. Previous behavior:  In [8]: pd.Series().index Out[8]: Index([], dtype='object')  In [9] pd.DataFrame().axes Out[9]: [Index([], dtype='object'), Index([], dtype='object')] 
+6. The numpy.msort function is deprecated. Use np.sort(a, axis=0) instead.
+7. When providing a list of columns of length one to DataFrame.groupby, the keys that are returned by iterating over the resulting DataFrameGroupBy object will now be tuples of length one (47761)
+8. Due to collision with the shape parameter n of several distributions, use of the distribution moment method with keyword argument n is deprecated. Keyword n is replaced with keyword order.
+9. Object arrays in sparse matrices now raise an error.
+10. In a future version, this will be treated as label-based:  In [4]: ser.loc[2:4] Out[4]: 2    1 3    2 dtype: int64 
+11. Note that due to this change some defaults have also changed:
+12. Deprecated Grouper.groups, use Groupby.groups instead (51182)
+13. The methods Series.round, DataFrame.__invert__, Series.__invert__, DataFrame.swapaxes, DataFrame.first, DataFrame.last, Series.first, Series.last and DataFrame.align will now always return new objects (51032)
+14. Deprecated Grouper.obj, use Groupby.obj instead (51206)
+15. Future behavior:  In [4]: ser.loc[2:4] Out[4]: 2    1 3    2 dtype: int64 
+16. The methods Series.round, DataFrame.__invert__, Series.__invert__, DataFrame.swapaxes, DataFrame.first, DataFrame.last, Series.first, Series.last and DataFrame.align will now always return new objects (51032)
+17. Old behavior:  In [3]: ser[2:4] Out[3]: 5    3 7    4 dtype: int64 
+18. Inexact indices into sparse matrices now raise an error.
+19. For example:  In [3]: ser[2:4] Out[3]: 5    3 7    4 dtype: int64 
+20. Removed the alias scipy.random for numpy.random.
+21. Previous behavior:  In [4]: ser.astype("datetime64[s]") Out[4]: 0   2016-01-01 1   2016-01-02 2   2016-01-03 dtype: datetime64[ns] 
+22. Previous behavior:  In [4]: ser.astype("datetime64[s]") Out[4]: 0   2016-01-01 1   2016-01-02 2   2016-01-03 dtype: datetime64[ns] 
+23. Previous behavior:  In [8]: pd.Series(['quetzal', 'quetzal', 'elk'], name='animal').value_counts()  Out[2]: quetzal    2 elk        1 Name: animal, dtype: int64 
+24. Deprecated pandas.io.sql.execute (50185)
+25. Deprecated Grouper.grouper, use Groupby.grouper instead (51182)
+26. Enforced disallowing indexing a Series with a single item list with a slice (e.g. ser[[slice(0, 2)]]). Either convert the list to tuple, or pass the slice directly instead (31333)
+27. Now, the axes return an empty RangeIndex (49572).  In [8]: pd.Series().index Out[8]: Index([], dtype='object')  In [9] pd.DataFrame().axes Out[9]: [Index([], dtype='object'), Index([], dtype='object')] 
+28. Enforced disallowing a tuple of column labels into .DataFrameGroupBy.__getitem__ (30546)
+29. Deprecated positional arguments for
+
+Your Response:

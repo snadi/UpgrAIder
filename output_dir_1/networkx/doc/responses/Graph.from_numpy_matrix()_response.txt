@@ -1,0 +1,12 @@
+1. ```The full updated code snippet in a fenced code block```
+```python
+import networkx as nx
+import numpy as np
+
+A = np.matrix([[0, 1, 1, 0, 0], [1, 0, 1, 1, 0], [1, 1, 0, 1, 1], [0, 1, 1, 0, 1], [0, 0, 1, 1, 0]])
+G = nx.from_numpy_matrix(A)
+print(list(G.edges))
+```
+
+2. The `G.edges` should be converted to a list to display the edges properly.
+3. No references used

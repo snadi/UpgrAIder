@@ -1,0 +1,105 @@
+{
+    "library": {
+        "name": "networkx",
+        "ghurl": "https://github.com/networkx/networkx",
+        "baseversion": "2.8.2",
+        "currentversion": "3.0",
+        "path": "/Users/mohamedsaif/Desktop/UpgrAIder/src/upgraider/../../libraries/networkx"
+    },
+    "num_snippets": 3,
+    "num_apis": 3,
+    "db_source": "modelonly",
+    "num_fixed": 0,
+    "num_updated": 1,
+    "num_updated_w_refs": 0,
+    "snippets": {
+        "Graph.to_numpy_matrix().py": {
+            "original_file": "Graph.to_numpy_matrix().py",
+            "api": "Graph.to_numpy_matrix()",
+            "prompt_file": "output_dir_1/networkx/modelonly/prompts/Graph.to_numpy_matrix()_prompt.txt",
+            "original_run": {
+                "problem_free": false,
+                "problem": {
+                    "type": "ERROR",
+                    "name": "AttributeError",
+                    "element_name": "'to_numpy_matrix'",
+                    "target_obj": "'networkx'"
+                },
+                "msg": "Traceback (most recent call last):\n  File \"/Users/mohamedsaif/Desktop/UpgrAIder/src/upgraider/../../libraries/networkx/examples/Graph.to_numpy_matrix().py\", line 7, in <module>\n    matrix = nx.to_numpy_matrix(G)\n             ^^^^^^^^^^^^^^^^^^\nAttributeError: module 'networkx' has no attribute 'to_numpy_matrix'\n"
+            },
+            "model_response": {
+                "update_status": "NO_RESPONSE",
+                "references": null,
+                "updated_code": null,
+                "reason": null
+            },
+            "model_reponse_file": "output_dir_1/networkx/modelonly/responses/Graph.to_numpy_matrix()_response.txt",
+            "num_references": 0,
+            "modified_file": null,
+            "modified_run": null,
+            "fix_status": "NOT_FIXED",
+            "diff": null
+        },
+        "Graph.from_numpy_matrix().py": {
+            "original_file": "Graph.from_numpy_matrix().py",
+            "api": "Graph.from_numpy_matrix()",
+            "prompt_file": "output_dir_1/networkx/modelonly/prompts/Graph.from_numpy_matrix()_prompt.txt",
+            "original_run": {
+                "problem_free": false,
+                "problem": {
+                    "type": "ERROR",
+                    "name": "AttributeError",
+                    "element_name": "'from_numpy_matrix'",
+                    "target_obj": "'networkx'"
+                },
+                "msg": "Traceback (most recent call last):\n  File \"/Users/mohamedsaif/Desktop/UpgrAIder/src/upgraider/../../libraries/networkx/examples/Graph.from_numpy_matrix().py\", line 5, in <module>\n    G = nx.from_numpy_matrix(A)\n        ^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'networkx' has no attribute 'from_numpy_matrix'\n"
+            },
+            "model_response": {
+                "update_status": "NO_RESPONSE",
+                "references": null,
+                "updated_code": null,
+                "reason": null
+            },
+            "model_reponse_file": "output_dir_1/networkx/modelonly/responses/Graph.from_numpy_matrix()_response.txt",
+            "num_references": 0,
+            "modified_file": null,
+            "modified_run": null,
+            "fix_status": "NOT_FIXED",
+            "diff": null
+        },
+        "OrderedGraph.py": {
+            "original_file": "OrderedGraph.py",
+            "api": "OrderedGraph",
+            "prompt_file": "output_dir_1/networkx/modelonly/prompts/OrderedGraph_prompt.txt",
+            "original_run": {
+                "problem_free": false,
+                "problem": {
+                    "type": "ERROR",
+                    "name": "AttributeError",
+                    "element_name": "'OrderedGraph'",
+                    "target_obj": "'networkx'"
+                },
+                "msg": "Traceback (most recent call last):\n  File \"/Users/mohamedsaif/Desktop/UpgrAIder/src/upgraider/../../libraries/networkx/examples/OrderedGraph.py\", line 3, in <module>\n    SG=nx.OrderedGraph()\n       ^^^^^^^^^^^^^^^\nAttributeError: module 'networkx' has no attribute 'OrderedGraph'\n"
+            },
+            "model_response": {
+                "update_status": "UPDATE",
+                "references": null,
+                "updated_code": "The full updated code snippet in a fenced code block",
+                "reason": "The update is needed to correct the typo in the class name `OrderedGraph` to `OrderedGraph`."
+            },
+            "model_reponse_file": "output_dir_1/networkx/modelonly/responses/OrderedGraph_response.txt",
+            "num_references": 0,
+            "modified_file": "output_dir_1/networkx/modelonly/updated/OrderedGraph_updated.py",
+            "modified_run": {
+                "problem_free": false,
+                "problem": null,
+                "msg": "/opt/homebrew/Cellar/python@3.12/3.12.2_1/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python: can't open file '/Users/mohamedsaif/Desktop/UpgrAIdervenv/output_dir_1/networkx/modelonly/updated/OrderedGraph_updated.py': [Errno 2] No such file or directory\n"
+            },
+            "fix_status": "NEW_ERROR",
+            "diff": "--- \n+++ \n@@ -1,6 +1,2 @@\n import networkx as nx\n-\n-SG=nx.OrderedGraph()\n-SG.add_nodes_from(\"HelloWorld\")\n-SG.add_edges_from([(0, 1), (1, 2), (3,4), (6,8)])\n-print(SG)+The full updated code snippet in a fenced code block"
+        }
+    },
+    "percent_updated": null,
+    "percent_updated_w_refs": null,
+    "percent_fixed": null
+}

@@ -10,5 +10,3 @@ stackapi
 tiktoken
 dataclasses_json
 pytest
-docutils
-setuptools

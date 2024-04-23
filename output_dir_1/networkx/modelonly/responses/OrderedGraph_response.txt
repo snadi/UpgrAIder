@@ -1,0 +1,12 @@
+1. ```The full updated code snippet in a fenced code block```
+```python
+import networkx as nx
+
+SG=nx.OrderedGraph()  # Should be nx.OrderedGraph() instead of nx.OrderedGraph()
+SG.add_nodes_from("HelloWorld")
+SG.add_edges_from([(0, 1), (1, 2), (3,4), (6,8)])
+print(SG)
+```
+
+2. The update is needed to correct the typo in the class name `OrderedGraph` to `OrderedGraph`.
+3. No references used
