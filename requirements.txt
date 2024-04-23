@@ -10,3 +10,5 @@ stackapi
 tiktoken
 dataclasses_json
 pytest
+docutils==0.21.1
+setuptools==69.5.1
