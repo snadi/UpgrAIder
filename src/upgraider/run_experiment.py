@@ -5,12 +5,14 @@ from apiexploration.Library import Library
 from upgraider.Report import DBSource
 import json
 import argparse
+import time
 
 
 def main():
     threshold = 0.5
     print("Starting experiment...")
     script_dir = os.path.dirname(__file__)
+    start_time = time.time()
 
     parser = argparse.ArgumentParser(description='Run upgraider on all library examples')
     parser.add_argument('--outputDir', type=str, help='directory to write output to', required=True)
@@ -53,6 +55,8 @@ def main():
                 threshold=threshold,
                 model = model
             )
-
+    end_time = time.time()
+    print(f"Experiment finished in {end_time - start_time} seconds")
+    
 if __name__ == "__main__":
     main()
