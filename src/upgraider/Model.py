@@ -16,20 +16,20 @@ import json
 
 load_dotenv(override=True)
 
-EMBEDDING_MODEL = "text-embedding-ada-002"
+EMBEDDING_MODEL = "code-search-ada-text-001"
 
 #TODO: use token length
 MAX_SECTION_LEN = 500
 SEPARATOR = "\n* "
 
-ENCODING = "cl100k_base"  # encoding for text-embedding-ada-002
+ENCODING = "p50k_base"  # encoding for code-search-ada-text-001
  
 encoding = tiktoken.get_encoding(ENCODING)
 separator_len = len(encoding.encode(SEPARATOR))
 
 COMPLETIONS_API_PARAMS = {
     "temperature": 0.0,
-    "model": "code-cushman-001"
+    "model": "ccode-search-ada-text-001"
 }
 
 GPT_3_5_TURBO_API_PARAMS = {
