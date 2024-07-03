@@ -26,6 +26,8 @@ def list_libraries():
 
             libraries.append(library)
 
+        break
+
     return libraries
 
 if __name__ == "__main__":
