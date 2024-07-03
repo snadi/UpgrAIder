@@ -134,7 +134,7 @@ jobs:
           zip -r results.zip results
 
       - name: Upload artifacts
-        uses: download-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: results-${{ matrix.library.name }}
           path: "results.zip"
