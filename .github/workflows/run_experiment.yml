@@ -149,7 +149,7 @@ jobs:
     - name: Merge Artifacts
       uses: actions/upload-artifact/merge@v4
       with:
-        name: results-all
+        name: all-results
         pattern: results-*
 
 
@@ -172,7 +172,7 @@ jobs:
       - name: Download artifacts for this run
         uses: actions/download-artifact@v4
         with:
-          name: results-all
+          name: all-results
           path: results
       
       - name: Download artifacts for comparison run
@@ -180,7 +180,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           run-id: ${{ github.event.inputs.compareTo }}
-          name: results-all
+          name: all-results
           path: baseline
 
       - name: Setup tmate session
