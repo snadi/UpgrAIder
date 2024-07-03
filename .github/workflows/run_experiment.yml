@@ -140,19 +140,28 @@ jobs:
           path: "results-${{ matrix.library.name }}.zip"
 
   combine_output:
-    name: Merge all benchmark outputs
+    name: Combine output from all benchmarks
     needs:
       - benchmark
     runs-on: ubuntu-latest
     steps:
-      
-    - name: Merge Artifacts
-      uses: actions/upload-artifact/merge@v4
-      with:
-        name: all-results
-        pattern: results-*
+      - name: Download output zips
+        uses: actions/download-artifact@v4
 
-
+      - name: Combine output zips
+        run: |
+          mkdir results
+          for zip in results-*/results.zip
+          do
+            unzip -oq $zip
+          done
+          zip -r results.zip results
+      - name: Upload combined output files
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-all
+          path: results.zip
+        
   generate-report:
     needs:
       - combine_output
@@ -172,7 +181,7 @@ jobs:
       - name: Download artifacts for this run
         uses: actions/download-artifact@v4
         with:
-          name: all-results
+          name: results-all
           path: results
       
       - name: Download artifacts for comparison run
@@ -180,7 +189,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           run-id: ${{ github.event.inputs.compareTo }}
-          name: all-results
+          name: results-all
           path: baseline
 
       - name: Setup tmate session
