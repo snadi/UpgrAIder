@@ -35,9 +35,9 @@ jobs:
       useDoc: "${{ github.event.inputs.useDoc || true }}"
       threshold: "${{ github.event.inputs.simthreshold || 0 }}"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
@@ -62,14 +62,14 @@ jobs:
         library: ${{ fromJson(needs.setup.outputs.libraries) }}
     steps:      
       - name: Checkout github repo (+ download lfs dependencies)
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           lfs: true
 
       - name: Pull LFS objects
         run: git lfs pull
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
@@ -134,7 +134,7 @@ jobs:
           zip -r results.zip results
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: results-${{ matrix.library.name }}
           path: "results.zip"
@@ -146,7 +146,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download output zips
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: Combine output zips
         run: |
@@ -157,19 +157,19 @@ jobs:
           done
           zip -r results.zip results
       - name: Upload combined output files
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: results-all
           path: results.zip
-
+        
   generate-report:
     needs:
       - combine_output
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
@@ -179,16 +179,16 @@ jobs:
           python setup.py develop
 
       - name: Download artifacts for this run
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: results-all
           path: results
       
       - name: Download artifacts for comparison run
         if: ${{ github.event.inputs.compareTo != '' }}
-        uses: dawidd6/action-download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
-          run_number: ${{ github.event.inputs.compareTo }}
+          run-id: ${{ github.event.inputs.compareTo }}
           name: results-all
           path: baseline
 
