@@ -9,7 +9,6 @@ def list_libraries():
     script_dir = os.path.dirname(__file__)
     libraries_folder = os.path.join(script_dir, "../../libraries")
 
-    count = 1
     for lib_dir in os.listdir(libraries_folder):
         if lib_dir.startswith('.'):
             continue
@@ -26,10 +25,6 @@ def list_libraries():
             )
 
             libraries.append(library)
-
-        if count == 2:
-            break
-        count += 1
 
     return libraries
 
