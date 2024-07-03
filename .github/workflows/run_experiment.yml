@@ -131,13 +131,13 @@ jobs:
 
       - name: Zip up results
         run: |
-          zip -r results.zip results
+          zip -r results-${{ matrix.library.name }}.zip results
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: results-${{ matrix.library.name }}
-          path: "results.zip"
+          path: "results-${{ matrix.library.name }}.zip"
 
   combine_output:
     name: Merge all benchmark outputs
@@ -146,11 +146,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       
-      - name: Merge Artifacts
-        uses: actions/upload-artifact/merge@v4
-        with:
-          name: results-all.zip
-          pattern: results-*
+    - name: Merge Artifacts
+      uses: actions/upload-artifact/merge@v4
+      with:
+        name: results-all
+        pattern: results-*
 
 
   generate-report:
