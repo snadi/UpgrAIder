@@ -10,6 +10,9 @@ echo "SCRATCH_VENV: $SCRATCH_VENV"
 
 cd $SCRATCH_VENV
 
+# create a fresh venv
+rm -rf .venv
+python -m venv .venv
 source .venv/bin/activate
 
 pip install --disable-pip-version-check $libname==$libversion 
