@@ -13,7 +13,7 @@ Note that UpgrAIder represents an early exploration of the above technique, and 
 ```
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements
+pip install -r requirements.txt
 python setup.py develop
 ```
 
@@ -26,7 +26,7 @@ python setup.py develop
 	cat > .env <<EOL
 	OPENAI_API_KEY=...
 	OPENAI_ORG=...
-	SCRATCH_VENV=<path to a folder that already has a venv we can activate>
+	SCRATCH_VENV=<absolute path to a folder that already has a venv we can activate>
 	```
 
 ## Running
@@ -43,15 +43,17 @@ The above script looks for sections with certain keywords related to APIs and/or
 
 ### Updating a single code example
 
-`src/upgraider/fix_code_examples.py` is the file responsible for this. Run `python upgraider/fix_lib_examples.py --help` to see the required command lines. To run a single example, make sure to specify `--examplefile`; otherwise, it will run on all the examples available for that library.
+`src/upgraider/fix_code_examples.py` is the file responsible for this. Run `python src/upgraider/fix_lib_examples.py --help` to see the required command lines. To run a single example, make sure to specify `--examplefile`; otherwise, it will run on all the examples available for that library.
 
 ### Running a full experiment
 
-Run `python src/upgraider/run_experiment.py`. This will attempt to run upgraider on *all* code examples avaiable for *all* libraries in the `libraries` folder. The output data and reports will be written to the `output` folder.
+Run `python src/upgraider/run_experiment.py --outputDir <absolute path of output folder>` This will attempt to run upgraider on *all* code examples avaiable for *all* libraries in the `libraries` folder. The output data and reports will be written to `outputDir`. 
 
-### Using Actions to run experiments
+To create a markdown report summarizing the results, use the `src/benchmark/parse_results.py` script while passing the output directory you wrote results to above. For example `python src/benchmark/parse_reports.py --outputdir output/`.
 
-The `run_experiment` workflow allows you to run a full experiment on the available libraries. It produces a markdown report of the results. Note that you need to set the required environment variables (i.e., API keys etc) as repository secrets.
+### Using GitHub Actions to run experiments
+
+The `run_experiment` workflow allows you to run a full experiment on the available libraries. It produces a markdown report of the results. Note that you need to configure your repository with two repository secrets `OPENAI_API_KEY` and `OPENAI_ORG`.
 
 ### Running Tests
 
