@@ -25,6 +25,8 @@ def list_libraries():
             )
 
             libraries.append(library)
+        
+        break
 
     return libraries
 
