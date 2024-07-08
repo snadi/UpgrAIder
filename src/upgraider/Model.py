@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from string import Template
 import re
 from upgraider.Database import get_embedded_doc_sections
-from upgraider.Report import UpdateStatus, ModelResponse, DBSource
+from upgraider.Report import UpdateStatus, ModelResponse, CodeSnippet
 import requests
 import json
 from upgraider.promptCrafting import construct_fixing_prompt
@@ -18,8 +18,11 @@ LLM_API_PARAMS = {
 
 
 class Model:
-    def __init__(self, model: str):
-        self.model = model
+    def __init__(self, model_name: str):
+        self.model_name = model_name
+        # self.api_endpoint = env["OPENAI_API_ENDPOINT"]
+        # self.auth_headers = env["OPENAI_AUTH_HEADERS"]
+        self.api_key = env["OPENAI_API_KEY"]
 
     def query(self, query: str) -> str:
         prompt = [
@@ -30,11 +33,13 @@ class Model:
             {"role": "user", "content": query},
         ]
 
-        openai.api_key = env["OPENAI_API_KEY"]
+        openai.api_key = self.api_key
 
         response = openai.ChatCompletion.create(
-            messages=prompt, model=self.model, **LLM_API_PARAMS
+            messages=prompt, model=self.model_name, **LLM_API_PARAMS
         )
+
+        print("response: ", response)
 
         result = response["choices"][0]["message"]["content"]
 
@@ -144,6 +149,7 @@ def parse_model_response(model_response: str) -> ModelResponse:
     # match the updated code by looking for the fenced code block, even without the correct enumeration
     updated_code_response = re.search(r"\s*(```)\s*([\s\S]*?)(```|$)", model_response)
     updated_code = None
+
     if updated_code_response:
         updated_code = strip_python_keyword(updated_code_response.group(2).strip())
         if updated_code != "" and "No changes needed" not in updated_code:
@@ -160,9 +166,10 @@ def parse_model_response(model_response: str) -> ModelResponse:
     references = find_references_in_response(model_response)
 
     response = ModelResponse(
+        raw_response=model_response,
         update_status=update_status,
         references=references,
-        updated_code=updated_code,
+        updated_code=CodeSnippet(code=updated_code),
         reason=reason,
     )
 

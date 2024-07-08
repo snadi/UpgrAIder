@@ -8,7 +8,8 @@ from upgraider.Report import (
     DBSource,
 )
 from upgraider.run_code import run_code
-from upgraider.Model import fix_suggested_code
+from upgraider.Model import Model, parse_model_response
+from upgraider.promptCrafting import construct_fixing_prompt
 import os
 import json
 import difflib
@@ -19,110 +20,6 @@ from collections import namedtuple, defaultdict
 import time
 
 
-class ResultType(Enum):
-    PROMPT = 1
-    RESPONSE = 2
-
-
-Import = namedtuple("Import", ["module", "name", "alias"])
-
-
-def _write_result(
-    result: str, result_type: ResultType, output_dir: str, example_file: str
-):
-    result_file_root = os.path.splitext(example_file)[0]
-
-    if result_type == ResultType.RESPONSE:
-        result_file = os.path.join(
-            output_dir, f"responses/{result_file_root}_response.txt"
-        )
-    elif result_type == ResultType.PROMPT:
-        result_file = os.path.join(output_dir, f"prompts/{result_file_root}_prompt.txt")
-    else:
-        print(f"Invalid result type: {result_type}")
-        return
-
-    os.makedirs(os.path.dirname(result_file), exist_ok=True)
-    with open(result_file, "w") as f:
-        f.write(result)
-    return result_file
-
-
-def _determine_fix_status(
-    original_code_result: RunResult, final_code_result: RunResult
-) -> FixStatus:
-    # original status is always an error or warning
-    if final_code_result.problem_free == True:
-        return FixStatus.FIXED
-    else:
-        if original_code_result.problem != final_code_result.problem:
-            return FixStatus.NEW_ERROR
-        else:
-            return FixStatus.NOT_FIXED
-
-
-# https://stackoverflow.com/questions/845276/how-to-print-the-comparison-of-two-multiline-strings-in-unified-diff-format
-# https://stackoverflow.com/posts/845432/, Andrea Francia
-def _unidiff(expected, actual):
-    """
-    Helper function. Returns a string containing the unified diff of two multiline strings.
-    """
-    expected = expected.splitlines(1)
-    actual = actual.splitlines(1)
-
-    diff = difflib.unified_diff(expected, actual)
-
-    return "".join(diff)
-
-
-def _format_import(import_stmt: Import) -> str:
-    if import_stmt.module:
-        if import_stmt.alias is not None:
-            return f"from {'.'.join(import_stmt.module)} import {'.'.join(import_stmt.name)} as {import_stmt.alias}"
-        else:
-            return f"from {'.'.join(import_stmt.module)} import {'.'.join(import_stmt.name)}"
-    else:
-        if import_stmt.alias is not None:
-            return f"import {'.'.join(import_stmt.name)} as {import_stmt.alias}"
-        else:
-            return f"import {'.'.join(import_stmt.name)}"
-
-
-# GaretJax, https://stackoverflow.com/questions/9008451/python-easy-way-to-read-all-import-statements-from-py-module
-def _get_imports(code: str) -> list[Import]:
-    try:
-        ast_root = ast.parse(code)
-
-        for node in ast.iter_child_nodes(ast_root):
-            if isinstance(node, ast.Import):
-                module = []
-            elif isinstance(node, ast.ImportFrom):
-                module = node.module.split(".")
-            else:
-                continue
-
-            for n in node.names:
-                yield Import(module, n.name.split("."), n.asname)
-    except:
-        return None
-
-
-def _fix_imports(old_code: str, updated_code: str) -> str:
-    old_imports = _get_imports(old_code)
-    updated_imports = _get_imports(updated_code)
-
-    if old_imports is None or updated_imports is None:
-        print("WARNING: could not parse imports for either old or updated code")
-        return updated_code
-
-    # if there is an old import that is not in the updated code, add it
-    for old_import in old_imports:
-        if old_import not in updated_imports:
-            updated_code = f"{_format_import(old_import)}\n{updated_code}"
-
-    return updated_code
-
-
 def fix_example(
     library: Library,
     example_file: str,
@@ -130,7 +27,7 @@ def fix_example(
     requirements_file: str,
     output_dir: str,
     use_references: bool,
-    model: str = "gpt-3.5-turbo-0125",
+    model: Model,
     threshold: float = None,
 ):
 
@@ -142,8 +39,8 @@ def fix_example(
 
     original_code_result = run_code(library, example_file_path, requirements_file)
 
-    prompt_text, model_response, parsed_response, ref_count = fix_suggested_code(
-        original_code, use_references=use_references, model=model, threshold=threshold
+    prompt_text = construct_fixing_prompt(
+        original_code=original_code, use_references=use_references, threshold=threshold
     )
 
     print("Writing prompt to file...")
@@ -151,10 +48,14 @@ def fix_example(
         prompt_text, ResultType.PROMPT, output_dir, example_file
     )
 
+    model_response = model.query(prompt_text)
+
     print("Writing model response to file...")
     model_response_file = _write_result(
         model_response, ResultType.RESPONSE, output_dir, example_file
     )
+
+    parsed_model_response = parse_model_response(model_response)
 
     final_code_result = None  # will stay as None if no update occurs
     updated_code_file = None
@@ -162,8 +63,8 @@ def fix_example(
     updated_code = None
     example_file_root = os.path.splitext(example_file)[0]
 
-    if parsed_response.update_status == UpdateStatus.UPDATE:
-        updated_code = parsed_response.updated_code
+    if parsed_model_response.update_status == UpdateStatus.UPDATE:
+        updated_code = parsed_model_response.updated_code
         if updated_code is None:
             print(
                 f"WARNING: update occurred for {example_file} but could not retrieve updated code"
@@ -186,10 +87,10 @@ def fix_example(
         original_file=example_file,
         api=example_file_root,  # for now, file name is in format <api>.py
         prompt_file=prompt_file,
-        num_references=ref_count,
+        # num_references=len(parsed_model_response.references),
         modified_file=updated_code_file,
         original_run=original_code_result,
-        model_response=parsed_response,
+        model_response=parsed_model_response,
         model_reponse_file=model_response_file,
         modified_run=final_code_result,
         fix_status=(
@@ -201,81 +102,6 @@ def fix_example(
     )
 
     return snippet_results
-
-
-def fix_examples(
-    library: Library,
-    output_dir: str,
-    use_references: bool,
-    model: str,
-    threshold: float = None,
-):
-    print(f"=== Fixing examples for {library.name} with model {model}")
-
-    report = Report(library)
-    snippets = {}
-    examples_path = os.path.join(library.path, "examples")
-
-    if os.path.exists(examples_path):
-        requirements_file = os.path.join(library.path, "requirements.txt")
-
-        if not os.path.exists(requirements_file):
-            requirements_file = None
-
-        for example_file in os.listdir(examples_path):
-            if example_file.startswith("."):
-                continue
-
-            snippet_results = fix_example(
-                library=library,
-                example_file=example_file,
-                examples_path=examples_path,
-                requirements_file=requirements_file,
-                output_dir=output_dir,
-                use_references=use_references,
-                model=model,
-                threshold=threshold,
-            )
-
-            print(f"Finished fixing {example_file}...")
-            snippets[example_file] = snippet_results
-
-            # wait 30 seconds between each example
-            time.sleep(30)
-
-    report.snippets = snippets
-    report.num_snippets = len(snippets)
-    report.db_source = (
-        DBSource.modelonly.value
-        if use_references is False
-        else DBSource.documentation.value
-    )
-    report.num_fixed = len(
-        [s for s in snippets.values() if s.fix_status == FixStatus.FIXED]
-    )
-    report.num_updated = len(
-        [
-            s
-            for s in snippets.values()
-            if s.model_response.update_status == UpdateStatus.UPDATE
-        ]
-    )
-    report.num_updated_w_refs = len(
-        [
-            s
-            for s in snippets.values()
-            if s.model_response.update_status == UpdateStatus.UPDATE
-            and s.model_response.references is not None
-            and "No references used" not in s.model_response.references
-        ]
-    )
-    report.num_apis = len(set([s.api for s in snippets.values()]))
-
-    output_json_file = os.path.join(output_dir, "report.json")
-    jsondata = report.to_json(indent=4)
-    os.makedirs(os.path.dirname(output_json_file), exist_ok=True)
-    with open(output_json_file, "w") as jsonfile:
-        jsonfile.write(jsondata)
 
 
 if __name__ == "__main__":
@@ -344,7 +170,7 @@ if __name__ == "__main__":
             )
         else:
             # fix all examples for this library
-            fix_examples(
+            fix_lib_examples(
                 library=library,
                 output_dir=output_dir,
                 model=args.model,

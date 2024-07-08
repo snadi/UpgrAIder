@@ -2,6 +2,8 @@ from enum import Enum
 from apiexploration.Library import Library, FunctionDiff
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
+from apiexploration.Library import CodeSnippet
+
 
 class DBSource(Enum):
     documentation = "doc"
@@ -12,22 +14,26 @@ class DBSource(Enum):
             return self.value == other
         return super().__eq__(other)
 
+
 class ProblemType(Enum):
     DEPRECATION_WARNING = "DEPRECATION_WARNING"
     ERROR = "ERROR"
 
-@dataclass 
+
+@dataclass
 class RunProblem:
     type: str
     name: str
     element_name: str
     target_obj: str | None = None
- 
+
+
 @dataclass
 class RunResult:
-    problem_free: bool # true if no error or warning, false otherwise
+    problem_free: bool  # true if no error or warning, false otherwise
     problem: RunProblem = None
     msg: str = None
+
 
 class UpdateStatus(Enum):
     UPDATE = "UPDATE"
@@ -40,6 +46,7 @@ class UpdateStatus(Enum):
             return self.value == other
         return super().__eq__(other)
 
+
 class FixStatus(Enum):
     FIXED = "FIXED"
     NOT_FIXED = "NOT_FIXED"
@@ -50,28 +57,35 @@ class FixStatus(Enum):
             return self.value == other
         return super().__eq__(other)
 
+
 @dataclass_json
 @dataclass
 class ModelResponse:
+    raw_response: str
     update_status: UpdateStatus
     references: str
-    updated_code: str
+    updated_code: CodeSnippet
     reason: str
+    prompt: str = None
+    library: Library = None
+    original_code: CodeSnippet = None
+
 
 @dataclass_json
 @dataclass
 class SnippetReport:
-    original_file: str
-    api: str
-    prompt_file: str
+    # original_code: CodeSnippet
+    # api: str
+    # prompt_file: str
     original_run: RunResult
     model_response: ModelResponse
-    model_reponse_file: str
-    num_references: int
-    modified_file: str
+    # model_reponse_file: str
+    # num_references: int
+    # modified_file: str
     modified_run: RunResult
     fix_status: FixStatus
     diff: str = None
+
 
 @dataclass_json
 @dataclass
