@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       model:
-        description: "Model to use for fixing (gpt-3.5, gpt-4)"
+        description: "Model to use for fixing (gpt-3.5-turbo-0125, gpt-4)"
         type: string
-        default: "gpt-3.5"
+        default: "gpt-3.5-turbo-0125"
       useModelOnly:
           description: "Run experiment with no external sources"
           type: boolean
@@ -96,8 +96,6 @@ jobs:
         env:
           OPENAI_API_KEY: "${{ secrets.OPENAI_API_KEY }}"
           OPENAI_ORG: "${{ secrets.OPENAI_ORG }}"
-          GPT4_ENDPOINT: ${{ secrets.GPT4_ENDPOINT }}
-          GPT4_AUTH_HEADERS: ${{ secrets.GPT4_AUTH_HEADERS }}
         run: |
           library_name=${{ matrix.library.name }}
           curr_dir=`pwd`
@@ -115,8 +113,6 @@ jobs:
         env:
           OPENAI_API_KEY: "${{ secrets.OPENAI_API_KEY }}"
           OPENAI_ORG: "${{ secrets.OPENAI_ORG }}"
-          GPT4_ENDPOINT: ${{ secrets.GPT4_ENDPOINT }}
-          GPT4_AUTH_HEADERS: ${{ secrets.GPT4_AUTH_HEADERS }}
         run: |
           library_name=${{ matrix.library.name }}
           curr_dir=`pwd`

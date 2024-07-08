@@ -130,7 +130,7 @@ def fix_example(
     requirements_file: str,
     output_dir: str,
     use_references: bool,
-    model: str = "gpt3-5",
+    model: str = "gpt-3.5-turbo-0125",
     threshold: float = None,
 ):
 
