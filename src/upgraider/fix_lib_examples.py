@@ -242,7 +242,6 @@ def fix_examples(
 
             # wait 30 seconds between each example
             time.sleep(30)
-            break
 
     report.snippets = snippets
     report.num_snippets = len(snippets)

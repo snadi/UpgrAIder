@@ -68,8 +68,6 @@ def main():
                 model=model,
             )
 
-        break
-
 
 if __name__ == "__main__":
     main()

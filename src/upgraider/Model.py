@@ -12,7 +12,9 @@ from upgraider.promptCrafting import construct_fixing_prompt
 
 load_dotenv(override=True)
 
-LLM_API_PARAMS = {"temperature": 0.0, "model": "gpt-3.5-turbo-0125"}
+LLM_API_PARAMS = {
+    "temperature": 0.0,
+}
 
 
 class Model:
@@ -37,6 +39,9 @@ class Model:
         result = response["choices"][0]["message"]["content"]
 
         return result
+
+
+# Helper functions to process model response
 
 
 def get_update_status(update_status: str) -> UpdateStatus:
