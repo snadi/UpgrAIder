@@ -5,7 +5,10 @@ on:
     inputs:
       model:
         description: "Model to use for fixing (gpt-3.5-turbo-0125, gpt-4)"
-        type: string
+        type: choice
+        options:
+          - "gpt-3.5-turbo-0125"
+          - "gpt-4"
         default: "gpt-3.5-turbo-0125"
       compareTo:
         description: "Run number of previous run to compare to (leave empty to skip comparison)"
@@ -88,7 +91,7 @@ jobs:
         run: |
           library_name=${{ matrix.library.name }}
           curr_dir=`pwd`
-          outputdir="$curr_dir/results/$library_name"
+          outputdir="$curr_dir/results/"
           python src/upgraider/run_experiment.py \
             --libpath ${{ matrix.library.path }} \
             --outputDir $outputdir \

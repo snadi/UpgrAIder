@@ -36,6 +36,7 @@ def get_section_content(section_id):
         .filter(DeprecationComment.id == section_id)
         .first()
     )
+    session.close()
     return section.content
 
 
