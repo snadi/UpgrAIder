@@ -7,14 +7,6 @@ on:
         description: "Model to use for fixing (gpt-3.5-turbo-0125, gpt-4)"
         type: string
         default: "gpt-3.5-turbo-0125"
-      useModelOnly:
-          description: "Run experiment with no external sources"
-          type: boolean
-          default: false
-      useDoc:
-        description: "Run experiment with references from Documentation/release notes"
-        type: boolean
-        default: true
       compareTo:
         description: "Run number of previous run to compare to (leave empty to skip comparison)"
         default: ""
@@ -31,8 +23,6 @@ jobs:
     outputs:
       libraries: "${{ steps.parse_libraries.outputs.libraries }}"
       model: "${{ github.event.inputs.model }}"
-      useModelOnly: "${{ github.event.inputs.useModelOnly || false }}"
-      useDoc: "${{ github.event.inputs.useDoc || true }}"
       threshold: "${{ github.event.inputs.simthreshold || 0 }}"
     steps:
       - uses: actions/checkout@v4
