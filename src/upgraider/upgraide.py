@@ -30,20 +30,12 @@ class Upgraider:
         threshold: float = 0.0,
         output_dir: str = None,
     ):
-        print(f"In upgraide with following arguments...")
-        print(f"code_snippet: {code_snippet}")
-        print(f"library: {library}")
-        print(f"use_references: {use_references}")
-        print(f"threshold: {threshold}")
-        print(f"output_dir: {output_dir}")
 
         prompt_text = construct_fixing_prompt(
             original_code=code_snippet.code,
             use_references=use_references,
             threshold=threshold,
         )
-
-        print("Prompt text: ", prompt_text)
 
         model_response = self.model.query(prompt_text)
 
@@ -54,10 +46,11 @@ class Upgraider:
         parsed_model_response.original_code = code_snippet
         parsed_model_response.library = library
 
-        parsed_model_response.updated_code = _fix_imports(
-            old_code=parsed_model_response.original_code,
-            updated_code=parsed_model_response.updated_code,
-        )
+        if parsed_model_response.update_status == UpdateStatus.UPDATE:
+            parsed_model_response.updated_code = _fix_imports(
+                old_code=parsed_model_response.original_code,
+                updated_code=parsed_model_response.updated_code,
+            )
 
         if output_dir is not None:
             updated_file_path = _write_updated_code(output_dir, parsed_model_response)
@@ -81,6 +74,8 @@ class Upgraider:
             examples_path, model_response.original_code.filename
         )
 
+        print("Will validate the following example file: ", example_file_path)
+
         original_code_result = run_code(library, example_file_path, requirements_file)
 
         print("Finished validating original run....")
@@ -94,14 +89,15 @@ class Upgraider:
                 print(
                     f"WARNING: update occurred for {model_response.original_code.filename} but could not retrieve updated code"
                 )
-        else:
-            print("Running Updated code")
-            updated_code_result = run_code(
-                library, model_response.updated_code.filename, requirements_file
-            )
-            diff = _unidiff(
-                model_response.original_code.code, model_response.updated_code.code
-            )
+            else:
+                print("Running Updated code")
+                print("File name of updated is ", model_response.updated_code.filename)
+                updated_code_result = run_code(
+                    library, model_response.updated_code.filename, requirements_file
+                )
+                diff = _unidiff(
+                    model_response.original_code.code, model_response.updated_code.code
+                )
 
         snippet_report = SnippetReport(
             model_response=model_response,
@@ -222,3 +218,77 @@ def _write_file(path, content):
     with open(path, mode="w", encoding="utf-8") as f:
         f.write(content)
     return path
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Fix example(s) for a given library")
+    parser.add_argument(
+        "--libpath",
+        type=str,
+        help="absolute path of target library folder",
+        required=True,
+    )
+    parser.add_argument(
+        "--outputDir",
+        type=str,
+        help="absolute path of directory to write output to",
+        required=True,
+    )
+    parser.add_argument(
+        "--dbsource",
+        type=str,
+        help="Which database to use for retrieval, doc (documentation) or modelonly to not augment with retrieval",
+        required=True,
+    )
+    parser.add_argument(
+        "--threshold", type=float, help="Similarity Threshold for retrieval"
+    )
+    parser.add_argument(
+        "--examplefile",
+        type=str,
+        help="Specific example file to run on (optional). Only name of example file needed.",
+        required=False,
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        help="Which model to use for fixing",
+        default="gpt-3.5",
+        choices=["gpt-3.5", "gpt-4"],
+    )
+
+    args = parser.parse_args()
+    script_dir = os.path.dirname(__file__)
+
+    with open(os.path.join(args.libpath, "library.json"), "r") as jsonfile:
+        libinfo = json.loads(jsonfile.read())
+        library = Library(
+            name=libinfo["name"],
+            ghurl=libinfo["ghurl"],
+            baseversion=libinfo["baseversion"],
+            currentversion=libinfo["currentversion"],
+            path=args.libpath,
+        )
+        output_dir = os.path.join(script_dir, args.outputDir)
+
+        if args.examplefile is not None:
+            # fix a specific example
+            fix_example(
+                library=library,
+                example_file=args.examplefile,
+                examples_path=os.path.join(library.path, "examples"),
+                requirements_file=os.path.join(library.path, "requirements.txt"),
+                output_dir=output_dir,
+                db_source=args.dbsource,
+                model=args.model,
+                threshold=args.threshold,
+            )
+        else:
+            # fix all examples for this library
+            fix_examples(
+                library=library,
+                output_dir=output_dir,
+                model=args.model,
+                db_source=args.dbsource,
+                threshold=args.threshold,
+            )
