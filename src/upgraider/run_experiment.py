@@ -1,65 +1,18 @@
 import os
-import logging as log
-
-# from upgraider.fix_lib_examples import fix_lib_examples
-from apiexploration.Library import Library, CodeSnippet
 import json
 import argparse
+import time
+from enum import Enum
+from apiexploration.Library import Library, CodeSnippet
 from upgraider.Model import Model
 from upgraider.upgraide import Upgraider
-import time
 from upgraider.Report import (
     Report,
-    SnippetReport,
     UpdateStatus,
-    RunResult,
     FixStatus,
     DBSource,
     ModelResponse,
 )
-import json
-from enum import Enum
-
-
-# def main():
-#     print("Starting experiment...")
-#     script_dir = os.path.dirname(__file__)
-
-#     parser = argparse.ArgumentParser(
-#         description="Run upgraider on all code snippets of the given library"
-#     )
-#     parser.add_argument(
-#         "--outputDir", type=str, help="directory to write output to", required=True
-#     )
-#     parser.add_argument(
-#         "--model",
-#         type=str,
-#         help="Which model to use for fixing",
-#         default="gpt-3.5-turbo-0125",
-#         choices=["gpt-3.5-turbo-0125", "gpt-4"],
-#     )
-
-#     args = parser.parse_args()
-
-#     libraries_folder = os.path.join(script_dir, "../../libraries")
-#     output_dir = args.outputDir
-#     model = Model(args.model)
-#     upgraider = Upgraider(model)
-
-#     if lib_dir.startswith("."):
-#         continue
-#     lib_path = os.path.join(libraries_folder, lib_dir)
-#     with open(
-#         os.path.join(libraries_folder, f"{lib_dir}/library.json"), "r"
-#     ) as jsonfile:
-#         libinfo = json.loads(jsonfile.read())
-#         library = Library(
-#             name=libinfo["name"],
-#             ghurl=libinfo["ghurl"],
-#             baseversion=libinfo["baseversion"],
-#             currentversion=libinfo["currentversion"],
-#             path=lib_path,
-#         )
 
 
 def _fix_lib_examples(

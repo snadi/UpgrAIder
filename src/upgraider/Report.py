@@ -74,14 +74,8 @@ class ModelResponse:
 @dataclass_json
 @dataclass
 class SnippetReport:
-    # original_code: CodeSnippet
-    # api: str
-    # prompt_file: str
     original_run: RunResult
     model_response: ModelResponse
-    # model_reponse_file: str
-    # num_references: int
-    # modified_file: str
     modified_run: RunResult
     fix_status: FixStatus
     diff: str = None

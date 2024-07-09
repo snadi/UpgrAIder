@@ -51,15 +51,3 @@ def get_embedded_doc_sections() -> dict[int, list[float]]:
 
     session.close()
     return {section.id: json.loads(section.embedding) for section in sections}
-
-
-# def load_embeddings(
-#     sections: list[DeprecationComment],
-# ) -> dict[int, list[float]]:
-#     """
-#     Read the section embeddings and their keys from the database
-#     """
-
-#     sections = get_embedded_doc_sections()
-
-#     return {section.id: json.loads(section.embedding) for section in sections}
