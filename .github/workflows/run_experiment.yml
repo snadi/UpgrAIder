@@ -4,17 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       model:
-        description: "Model to use for fixing (gpt-3.5, gpt-4)"
-        type: string
-        default: "gpt-3.5"
-      useModelOnly:
-          description: "Run experiment with no external sources"
-          type: boolean
-          default: false
-      useDoc:
-        description: "Run experiment with references from Documentation/release notes"
-        type: boolean
-        default: true
+        description: "Model to use for fixing (gpt-3.5-turbo-0125, gpt-4)"
+        type: choice
+        options:
+          - "gpt-3.5-turbo-0125"
+          - "gpt-4"
+        default: "gpt-3.5-turbo-0125"
       compareTo:
         description: "Run number of previous run to compare to (leave empty to skip comparison)"
         default: ""
@@ -31,8 +26,6 @@ jobs:
     outputs:
       libraries: "${{ steps.parse_libraries.outputs.libraries }}"
       model: "${{ github.event.inputs.model }}"
-      useModelOnly: "${{ github.event.inputs.useModelOnly || false }}"
-      useDoc: "${{ github.event.inputs.useDoc || true }}"
       threshold: "${{ github.event.inputs.simthreshold || 0 }}"
     steps:
       - uses: actions/checkout@v4
@@ -91,41 +84,17 @@ jobs:
         uses: mxschmitt/action-tmate@v3
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
 
-      - name: Run example update with no sources
-        if: ${{ github.event.inputs.useModelOnly == 'true' }}
+      - name: Run upgraider on given lib
         env:
           OPENAI_API_KEY: "${{ secrets.OPENAI_API_KEY }}"
           OPENAI_ORG: "${{ secrets.OPENAI_ORG }}"
-          GPT4_ENDPOINT: ${{ secrets.GPT4_ENDPOINT }}
-          GPT4_AUTH_HEADERS: ${{ secrets.GPT4_AUTH_HEADERS }}
         run: |
           library_name=${{ matrix.library.name }}
           curr_dir=`pwd`
-          outputdir="$curr_dir/results/$library_name/modelonly"
-          mkdir -p $outputdir 
-          python src/upgraider/fix_lib_examples.py \
+          outputdir="$curr_dir/results/"
+          python src/upgraider/run_experiment.py \
             --libpath ${{ matrix.library.path }} \
             --outputDir $outputdir \
-            --dbsource modelonly \
-            --threshold ${{ needs.setup.outputs.threshold }} \
-            --model ${{ needs.setup.outputs.model }} \
-
-      - name: Run example update with doc sources
-        if: ${{ needs.setup.outputs.useDoc == 'true' }}
-        env:
-          OPENAI_API_KEY: "${{ secrets.OPENAI_API_KEY }}"
-          OPENAI_ORG: "${{ secrets.OPENAI_ORG }}"
-          GPT4_ENDPOINT: ${{ secrets.GPT4_ENDPOINT }}
-          GPT4_AUTH_HEADERS: ${{ secrets.GPT4_AUTH_HEADERS }}
-        run: |
-          library_name=${{ matrix.library.name }}
-          curr_dir=`pwd`
-          outputdir="$curr_dir/results/$library_name/doc"
-          mkdir -p $outputdir 
-          python src/upgraider/fix_lib_examples.py \
-            --libpath ${{ matrix.library.path }} \
-            --outputDir $outputdir \
-            --dbsource doc \
             --threshold ${{ needs.setup.outputs.threshold }} \
             --model ${{ needs.setup.outputs.model }} \
 

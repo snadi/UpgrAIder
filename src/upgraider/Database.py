@@ -12,12 +12,14 @@ engine = create_engine(
 )
 Session = sessionmaker(bind=engine)
 
+
 class LibReleaseNote(Base):
     __tablename__ = "lib_release_notes"
     id = Column(Integer, primary_key=True)
     library = Column(String)
     version = Column(String)
     filename = Column(String)
+
 
 class DeprecationComment(Base):
     __tablename__ = "deprecation_comments"
@@ -27,7 +29,18 @@ class DeprecationComment(Base):
     embedding = Column(Text)
 
 
-def get_embedded_doc_sections() -> list[DeprecationComment]:
+def get_section_content(section_id):
+    session = Session()
+    section = (
+        session.query(DeprecationComment)
+        .filter(DeprecationComment.id == section_id)
+        .first()
+    )
+    session.close()
+    return section.content
+
+
+def get_embedded_doc_sections() -> dict[int, list[float]]:
     session = Session()
     sections = (
         session.query(DeprecationComment)
@@ -37,16 +50,4 @@ def get_embedded_doc_sections() -> list[DeprecationComment]:
     )
 
     session.close()
-    return sections
-
-def load_embeddings(
-    sections: list[DeprecationComment],
-) -> dict[int, list[float]]:
-    """
-    Read the section embeddings and their keys from the database
-    """
-
-    return {
-        section.id: json.loads(section.embedding)
-        for section in sections
-    }
+    return {section.id: json.loads(section.embedding) for section in sections}
