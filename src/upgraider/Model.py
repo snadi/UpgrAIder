@@ -154,7 +154,9 @@ def _is_no_update(model_response: str) -> bool:
     return False
 
 
-def parse_model_response(model_response: str) -> ModelResponse:
+def parse_model_response(
+    model_response: str, original_code: CodeSnippet
+) -> ModelResponse:
 
     # match the updated code by looking for the fenced code block, even without the correct enumeration
     updated_code_response = re.search(r"\s*(```)\s*([\s\S]*?)(```|$)", model_response)
@@ -162,10 +164,15 @@ def parse_model_response(model_response: str) -> ModelResponse:
 
     if updated_code_response:
         updated_code = strip_markdown_keywords(updated_code_response.group(2).strip())
-        if updated_code != "" and "No changes needed" not in updated_code:
-            update_status = UpdateStatus.UPDATE
-        else:
+
+        if (
+            (updated_code == "")
+            or ("No changes needed" in updated_code)
+            or (updated_code.strip() == original_code.code.strip())
+        ):
             update_status = UpdateStatus.NO_UPDATE
+        else:
+            update_status = UpdateStatus.UPDATE
     else:
         if _is_no_update(model_response):
             update_status = UpdateStatus.NO_UPDATE
@@ -177,6 +184,7 @@ def parse_model_response(model_response: str) -> ModelResponse:
 
     response = ModelResponse(
         raw_response=model_response,
+        original_code=original_code,
         update_status=update_status,
         references=references,
         updated_code=CodeSnippet(code=updated_code),
@@ -184,40 +192,3 @@ def parse_model_response(model_response: str) -> ModelResponse:
     )
 
     return response
-
-
-# def fix_suggested_code(
-#     query: str,
-#     use_references: bool = True,
-#     model: str = "gpt-3.5-turbo-0125",
-#     threshold: float = None,
-# ):
-
-#     # sections = None
-
-#     # if db_source == DBSource.documentation:
-#     #     sections = get_embedded_doc_sections()
-#     # elif db_source == DBSource.modelonly:
-#     #     sections = []
-#     # else:
-#     #     raise ValueError(f"Invalid db_source {db_source}")
-
-#     prompt_text, ref_count = construct_fixing_prompt(
-#         original_code=query, use_references=use_references, threshold=threshold
-#     )
-
-#     prompt = [
-#         {
-#             "role": "system",
-#             "content": "You are a smart code reviewer who can spot code that uses a non-existent or deprecated API.",
-#         },
-#         {"role": "user", "content": prompt_text},
-#     ]
-#     openai.api_key = env["OPENAI_API_KEY"]
-
-#     response = openai.ChatCompletion.create(
-#         messages=prompt, model=model, **LLM_API_PARAMS
-#     )
-#     response_text = response["choices"][0]["message"]["content"]
-
-#     return prompt_text, response_text, parse_model_response(response_text), ref_count

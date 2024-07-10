@@ -39,9 +39,8 @@ class Upgraider:
 
         model_response = self.model.query(prompt_text)
 
-        parsed_model_response = parse_model_response(model_response)
+        parsed_model_response = parse_model_response(model_response, code_snippet)
         parsed_model_response.prompt = prompt_text
-        parsed_model_response.original_code = code_snippet
         parsed_model_response.library = library
 
         if parsed_model_response.update_status == UpdateStatus.UPDATE:

@@ -1,9 +1,33 @@
 from upgraider.Model import UpdateStatus, parse_model_response
+from apiexploration.Library import CodeSnippet
+
+
+def test_providedcode_noupdate():
+    original_code = """
+import numpy as np
+from scipy.optimize import minimize
+
+def rosen(x):
+    return sum(100.0*(x[1:]-x[:-1]**2.0)**2.0 + (1-x[:-1])**2.0)
+"""
+    response = f"""
+1. 
+```python
+{original_code}
+```
+
+2. No updates needed.
+3. No references used
+    """
+
+    result = parse_model_response(response, CodeSnippet(code=original_code))
+    assert result.update_status == UpdateStatus.NO_UPDATE
 
 
 def test_noreferences_response():
     response = """No references used"""
-    result = parse_model_response(response)
+    original_code = """originalcode()"""
+    result = parse_model_response(response, CodeSnippet(code=original_code))
     assert result.update_status == UpdateStatus.NO_UPDATE
 
 
@@ -26,7 +50,8 @@ print(dense_cat)
 3. {reference}
     """
 
-    result = parse_model_response(response)
+    original_code = """originalcode()"""
+    result = parse_model_response(response, CodeSnippet(code=original_code))
     assert result.update_status == UpdateStatus.UPDATE
     assert result.references == reference
     assert result.updated_code.code == updated_code.strip()
@@ -40,7 +65,8 @@ def test_incorrect_short_repsonse():
 {reference}
     """
 
-    result = parse_model_response(response)
+    original_code = """originalcode()"""
+    result = parse_model_response(response, CodeSnippet(code=original_code))
     assert result.update_status == UpdateStatus.NO_RESPONSE
 
 
@@ -50,7 +76,8 @@ def test_incorrect_long_repsonse():
 Reason: The code is using valid and up-to-date numpy APIs to create an array and sort it. No deprecated or non-existent APIs are being used.
 References used: No references used.
 """
-    result = parse_model_response(response)
+    original_code = """originalcode()"""
+    result = parse_model_response(response, CodeSnippet(code=original_code))
 
     assert result.update_status == UpdateStatus.NO_UPDATE
     assert result.references is None
@@ -71,7 +98,8 @@ Reason for update: {reason}
 List of reference numbers used: {references}
 """
 
-    result = parse_model_response(response)
+    original_code = """originalcode()"""
+    result = parse_model_response(response, CodeSnippet(code=original_code))
     assert result.update_status == UpdateStatus.UPDATE
     assert result.reason == reason
     assert result.references == references
@@ -90,7 +118,8 @@ some code
 2. {reason}
 3. {reference}
 """
-    result = parse_model_response(response)
+    original_code = """originalcode()"""
+    result = parse_model_response(response, CodeSnippet(code=original_code))
     assert result.update_status == UpdateStatus.UPDATE
     assert result.reason == reason
     assert result.references == reference
@@ -105,7 +134,8 @@ some code
 - Reason for update: None
 - List of reference numbers used: No references used
 """
-    result = parse_model_response(response)
+    original_code = """originalcode()"""
+    result = parse_model_response(response, CodeSnippet(code=original_code))
     assert result.update_status == UpdateStatus.UPDATE
     assert result.reason is None
     assert result.references is None
@@ -124,7 +154,8 @@ some code
 - Reason for update: None
 - List of reference numbers used: No references used
 """
-    result = parse_model_response(response)
+    original_code = """originalcode()"""
+    result = parse_model_response(response, CodeSnippet(code=original_code))
     assert result.update_status == UpdateStatus.NO_UPDATE
     assert result.reason is None
     assert result.references is None
@@ -147,6 +178,7 @@ List of reference numbers used:
 
 - 6
 """
-    result = parse_model_response(response)
+    original_code = """originalcode()"""
+    result = parse_model_response(response, CodeSnippet(code=original_code))
     assert result.update_status == UpdateStatus.UPDATE
     assert result.reason == f"- {reason1}\n- {reason2}"
