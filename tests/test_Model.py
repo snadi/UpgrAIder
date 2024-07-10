@@ -23,8 +23,9 @@ print(dense_cat)
     result = parse_model_response(response)
     assert result.update_status == UpdateStatus.UPDATE
     assert result.references == reference
-    assert result.updated_code == updated_code.strip()
+    assert result.updated_code.code == updated_code.strip()
     assert result.reason == reason
+
 
 def test_incorrect_short_repsonse():
     reference = "No references used"
@@ -35,6 +36,7 @@ def test_incorrect_short_repsonse():
 
     result = parse_model_response(response)
     assert result.update_status == UpdateStatus.NO_RESPONSE
+
 
 def test_incorrect_long_repsonse():
     response = """
@@ -47,10 +49,11 @@ References used: No references used.
     assert result.update_status == UpdateStatus.NO_UPDATE
     assert result.references is None
 
+
 def test_reason_not_enumerated():
     reason = "Here is the model's reason."
     references = "3"
-    response= f"""
+    response = f"""
 Possible response:
 
 ```
@@ -67,10 +70,11 @@ List of reference numbers used: {references}
     assert result.reason == reason
     assert result.references == references
 
+
 def test_reason_enumerated():
     reason = "Here is the model's reason."
     reference = "3"
-    response= f"""
+    response = f"""
 Possible response:
 
 ```
@@ -85,8 +89,9 @@ some code
     assert result.reason == reason
     assert result.references == reference
 
+
 def test_no_reason():
-    response= f"""
+    response = f"""
 ```
 some code
 ```
@@ -98,6 +103,7 @@ some code
     assert result.update_status == UpdateStatus.UPDATE
     assert result.reason is None
     assert result.references is None
+
 
 def test_codeexists_but_not_updated():
     response = f"""
@@ -117,10 +123,11 @@ some code
     assert result.reason is None
     assert result.references is None
 
+
 def test_enumerated_reason():
     reason1 = "reason 1"
     reason2 = "reason 2"
-    response= f"""
+    response = f"""
 ```
 some code
 ```
