@@ -105,7 +105,7 @@ class Upgraider:
         return snippet_report
 
 
-def _fix_imports(old_code: CodeSnippet, updated_code: CodeSnippet) -> str:
+def _fix_imports(old_code: CodeSnippet, updated_code: CodeSnippet) -> CodeSnippet:
     """
     Given the old code and the updated code, this function will ensure that the updated code has all the imports from the old code.
     """
