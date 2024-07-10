@@ -1,6 +1,12 @@
 from upgraider.Model import UpdateStatus, parse_model_response
 
 
+def test_noreferences_response():
+    response = """No references used"""
+    result = parse_model_response(response)
+    assert result.update_status == UpdateStatus.NO_UPDATE
+
+
 def test_correctly_formatted_response():
     reference = "32639"
     updated_code = """

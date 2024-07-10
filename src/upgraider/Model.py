@@ -142,6 +142,18 @@ def find_references_in_response(model_response: str) -> str:
     return references
 
 
+def _is_no_update(model_response: str) -> bool:
+    no_update_keywords = ["No update", "does not need to be updated"]
+
+    if any(keyword in model_response for keyword in no_update_keywords):
+        return True
+
+    if model_response == "No references used":
+        return True
+
+    return False
+
+
 def parse_model_response(model_response: str) -> ModelResponse:
 
     # match the updated code by looking for the fenced code block, even without the correct enumeration
@@ -155,10 +167,7 @@ def parse_model_response(model_response: str) -> ModelResponse:
         else:
             update_status = UpdateStatus.NO_UPDATE
     else:
-        if (
-            "No update" in model_response
-            or "does not need to be updated" in model_response
-        ):
+        if _is_no_update(model_response):
             update_status = UpdateStatus.NO_UPDATE
         else:
             update_status = UpdateStatus.NO_RESPONSE
