@@ -39,8 +39,6 @@ class Model:
             messages=prompt, model=self.model_name, **LLM_API_PARAMS
         )
 
-        print("response: ", response)
-
         result = response["choices"][0]["message"]["content"]
 
         return result
