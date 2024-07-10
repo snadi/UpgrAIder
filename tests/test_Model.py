@@ -2,6 +2,27 @@ from upgraider.Model import UpdateStatus, parse_model_response
 from apiexploration.Library import CodeSnippet
 
 
+def test_extra_code_fencing():
+    updated_code = """
+G = nx.from_numpy_array(A)
+print(G.edges)
+"""
+    response = f"""
+1. ```The full updated code snippet in a fenced code block```
+```python
+{updated_code}
+```
+
+2. Some explation
+
+3. No references used
+"""
+    original_code = """originalcode()"""
+    result = parse_model_response(response, CodeSnippet(code=original_code))
+    assert result.update_status == UpdateStatus.UPDATE
+    assert result.updated_code.code.strip() == updated_code.strip()
+
+
 def test_providedcode_noupdate():
     original_code = """
 import numpy as np

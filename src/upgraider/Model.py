@@ -154,21 +154,40 @@ def _is_no_update(model_response: str) -> bool:
     return False
 
 
+def _find_updated_code_snippet(model_response: str) -> str:
+    # match the updated code by looking for the fenced code block, even without the correct enumeration
+
+    code_snippets = re.findall(r"\s*(```)\s*([\s\S]*?)(```|$)", model_response)
+
+    updated_code = None
+
+    if len(code_snippets) == 0:
+        return updated_code
+    elif len(code_snippets) == 1:
+        updated_code = strip_markdown_keywords(code_snippets[0][1].strip())
+    else:
+        selected_snippet = code_snippets[0][1].strip()
+        for snippet in code_snippets:
+            code = snippet[1].strip()
+            if code.startswith("python"):
+                selected_snippet = code
+            else:
+                if len(code.splitlines()) > len(selected_snippet.splitlines()):
+                    selected_snippet = code
+                    break
+        updated_code = strip_markdown_keywords(selected_snippet.strip())
+    return updated_code
+
+
 def parse_model_response(
     model_response: str, original_code: CodeSnippet
 ) -> ModelResponse:
 
-    # match the updated code by looking for the fenced code block, even without the correct enumeration
-    updated_code_response = re.search(r"\s*(```)\s*([\s\S]*?)(```|$)", model_response)
-    updated_code = None
+    updated_code = _find_updated_code_snippet(model_response)
 
-    if updated_code_response:
-        updated_code = strip_markdown_keywords(updated_code_response.group(2).strip())
-
-        if (
-            (updated_code == "")
-            or ("No changes needed" in updated_code)
-            or (updated_code.strip() == original_code.code.strip())
+    if updated_code is not None and updated_code.strip() != "":
+        if ("No changes needed" in updated_code) or (
+            updated_code.strip() == original_code.code.strip()
         ):
             update_status = UpdateStatus.NO_UPDATE
         else:
