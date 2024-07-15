@@ -39,8 +39,6 @@ class Model:
             messages=prompt, model=self.model_name, **LLM_API_PARAMS
         )
 
-        print("response: ", response)
-
         result = response["choices"][0]["message"]["content"]
 
         return result
@@ -144,23 +142,58 @@ def find_references_in_response(model_response: str) -> str:
     return references
 
 
-def parse_model_response(model_response: str) -> ModelResponse:
+def _is_no_update(model_response: str) -> bool:
+    no_update_keywords = ["No update", "does not need to be updated"]
 
+    if any(keyword in model_response for keyword in no_update_keywords):
+        return True
+
+    if model_response == "No references used":
+        return True
+
+    return False
+
+
+def _find_updated_code_snippet(model_response: str) -> str:
     # match the updated code by looking for the fenced code block, even without the correct enumeration
-    updated_code_response = re.search(r"\s*(```)\s*([\s\S]*?)(```|$)", model_response)
+
+    code_snippets = re.findall(r"\s*(```)\s*([\s\S]*?)(```|$)", model_response)
+
     updated_code = None
 
-    if updated_code_response:
-        updated_code = strip_markdown_keywords(updated_code_response.group(2).strip())
-        if updated_code != "" and "No changes needed" not in updated_code:
-            update_status = UpdateStatus.UPDATE
-        else:
-            update_status = UpdateStatus.NO_UPDATE
+    if len(code_snippets) == 0:
+        return updated_code
+    elif len(code_snippets) == 1:
+        updated_code = strip_markdown_keywords(code_snippets[0][1].strip())
     else:
-        if (
-            "No update" in model_response
-            or "does not need to be updated" in model_response
+        selected_snippet = code_snippets[0][1].strip()
+        for snippet in code_snippets:
+            code = snippet[1].strip()
+            if code.startswith("python"):
+                selected_snippet = code
+            else:
+                if len(code.splitlines()) > len(selected_snippet.splitlines()):
+                    selected_snippet = code
+                    break
+        updated_code = strip_markdown_keywords(selected_snippet.strip())
+    return updated_code
+
+
+def parse_model_response(
+    model_response: str, original_code: CodeSnippet
+) -> ModelResponse:
+
+    updated_code = _find_updated_code_snippet(model_response)
+
+    if updated_code is not None and updated_code.strip() != "":
+        if ("No changes needed" in updated_code) or (
+            updated_code.strip() == original_code.code.strip()
         ):
+            update_status = UpdateStatus.NO_UPDATE
+        else:
+            update_status = UpdateStatus.UPDATE
+    else:
+        if _is_no_update(model_response):
             update_status = UpdateStatus.NO_UPDATE
         else:
             update_status = UpdateStatus.NO_RESPONSE
@@ -170,6 +203,7 @@ def parse_model_response(model_response: str) -> ModelResponse:
 
     response = ModelResponse(
         raw_response=model_response,
+        original_code=original_code,
         update_status=update_status,
         references=references,
         updated_code=CodeSnippet(code=updated_code),
@@ -177,40 +211,3 @@ def parse_model_response(model_response: str) -> ModelResponse:
     )
 
     return response
-
-
-# def fix_suggested_code(
-#     query: str,
-#     use_references: bool = True,
-#     model: str = "gpt-3.5-turbo-0125",
-#     threshold: float = None,
-# ):
-
-#     # sections = None
-
-#     # if db_source == DBSource.documentation:
-#     #     sections = get_embedded_doc_sections()
-#     # elif db_source == DBSource.modelonly:
-#     #     sections = []
-#     # else:
-#     #     raise ValueError(f"Invalid db_source {db_source}")
-
-#     prompt_text, ref_count = construct_fixing_prompt(
-#         original_code=query, use_references=use_references, threshold=threshold
-#     )
-
-#     prompt = [
-#         {
-#             "role": "system",
-#             "content": "You are a smart code reviewer who can spot code that uses a non-existent or deprecated API.",
-#         },
-#         {"role": "user", "content": prompt_text},
-#     ]
-#     openai.api_key = env["OPENAI_API_KEY"]
-
-#     response = openai.ChatCompletion.create(
-#         messages=prompt, model=model, **LLM_API_PARAMS
-#     )
-#     response_text = response["choices"][0]["message"]["content"]
-
-#     return prompt_text, response_text, parse_model_response(response_text), ref_count
