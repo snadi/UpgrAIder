@@ -4,17 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       model:
-        description: "Model to use for fixing (gpt-3.5, gpt-4)"
-        type: string
-        default: "gpt-3.5"
-      useModelOnly:
-          description: "Run experiment with no external sources"
-          type: boolean
-          default: false
-      useDoc:
-        description: "Run experiment with references from Documentation/release notes"
-        type: boolean
-        default: true
+        description: "Model to use for fixing (gpt-3.5-turbo-0125, gpt-4)"
+        type: choice
+        options:
+          - "gpt-3.5-turbo-0125"
+          - "gpt-4"
+        default: "gpt-3.5-turbo-0125"
       compareTo:
         description: "Run number of previous run to compare to (leave empty to skip comparison)"
         default: ""
@@ -31,13 +26,11 @@ jobs:
     outputs:
       libraries: "${{ steps.parse_libraries.outputs.libraries }}"
       model: "${{ github.event.inputs.model }}"
-      useModelOnly: "${{ github.event.inputs.useModelOnly || false }}"
-      useDoc: "${{ github.event.inputs.useDoc || true }}"
       threshold: "${{ github.event.inputs.simthreshold || 0 }}"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
@@ -62,14 +55,14 @@ jobs:
         library: ${{ fromJson(needs.setup.outputs.libraries) }}
     steps:      
       - name: Checkout github repo (+ download lfs dependencies)
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           lfs: true
 
       - name: Pull LFS objects
         run: git lfs pull
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
@@ -91,41 +84,17 @@ jobs:
         uses: mxschmitt/action-tmate@v3
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
 
-      - name: Run example update with no sources
-        if: ${{ github.event.inputs.useModelOnly == 'true' }}
+      - name: Run upgraider on given lib
         env:
           OPENAI_API_KEY: "${{ secrets.OPENAI_API_KEY }}"
           OPENAI_ORG: "${{ secrets.OPENAI_ORG }}"
-          GPT4_ENDPOINT: ${{ secrets.GPT4_ENDPOINT }}
-          GPT4_AUTH_HEADERS: ${{ secrets.GPT4_AUTH_HEADERS }}
         run: |
           library_name=${{ matrix.library.name }}
           curr_dir=`pwd`
-          outputdir="$curr_dir/results/$library_name/modelonly"
-          mkdir -p $outputdir 
-          python src/upgraider/fix_lib_examples.py \
+          outputdir="$curr_dir/results/"
+          python src/upgraider/run_experiment.py \
             --libpath ${{ matrix.library.path }} \
             --outputDir $outputdir \
-            --dbsource modelonly \
-            --threshold ${{ needs.setup.outputs.threshold }} \
-            --model ${{ needs.setup.outputs.model }} \
-
-      - name: Run example update with doc sources
-        if: ${{ needs.setup.outputs.useDoc == 'true' }}
-        env:
-          OPENAI_API_KEY: "${{ secrets.OPENAI_API_KEY }}"
-          OPENAI_ORG: "${{ secrets.OPENAI_ORG }}"
-          GPT4_ENDPOINT: ${{ secrets.GPT4_ENDPOINT }}
-          GPT4_AUTH_HEADERS: ${{ secrets.GPT4_AUTH_HEADERS }}
-        run: |
-          library_name=${{ matrix.library.name }}
-          curr_dir=`pwd`
-          outputdir="$curr_dir/results/$library_name/doc"
-          mkdir -p $outputdir 
-          python src/upgraider/fix_lib_examples.py \
-            --libpath ${{ matrix.library.path }} \
-            --outputDir $outputdir \
-            --dbsource doc \
             --threshold ${{ needs.setup.outputs.threshold }} \
             --model ${{ needs.setup.outputs.model }} \
 
@@ -134,7 +103,7 @@ jobs:
           zip -r results.zip results
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: results-${{ matrix.library.name }}
           path: "results.zip"
@@ -146,7 +115,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download output zips
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: Combine output zips
         run: |
@@ -157,19 +126,19 @@ jobs:
           done
           zip -r results.zip results
       - name: Upload combined output files
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: results-all
           path: results.zip
-
+        
   generate-report:
     needs:
       - combine_output
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
@@ -179,16 +148,16 @@ jobs:
           python setup.py develop
 
       - name: Download artifacts for this run
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: results-all
           path: results
       
       - name: Download artifacts for comparison run
         if: ${{ github.event.inputs.compareTo != '' }}
-        uses: dawidd6/action-download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
-          run_number: ${{ github.event.inputs.compareTo }}
+          run-id: ${{ github.event.inputs.compareTo }}
           name: results-all
           path: baseline
 
