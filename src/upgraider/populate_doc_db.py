@@ -1,5 +1,5 @@
 
-from Model import get_embedding
+from promptCrafting import get_embedding
 from docutils.utils import Reporter
 from docutils.core import publish_file
 from docutils.parsers.rst import roles, nodes
