@@ -1,0 +1,23 @@
+Metadata-Version: 2.1
+Name: upgraider
+Version: 0.1.0
+Summary: LLM-based update of code examples
+Home-page: https://github.com/githubnext/upgraider
+Author: GitHub Next
+Author-email: nadi@ualberta.ca
+Requires-Python: ==3.10.6
+License-File: LICENSE
+Requires-Dist: pandas
+Requires-Dist: plotly
+Requires-Dist: markdownify
+Requires-Dist: openai==0.27.2
+Requires-Dist: sqlalchemy==2.0.4
+Requires-Dist: requests
+Requires-Dist: jsonpickle
+Requires-Dist: python-dotenv
+Requires-Dist: stackapi
+Requires-Dist: tiktoken
+Requires-Dist: dataclasses_json
+Requires-Dist: pytest
+Requires-Dist: docutils==0.21.1
+Requires-Dist: setuptools==69.5.1
