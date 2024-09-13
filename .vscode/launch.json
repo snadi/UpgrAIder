@@ -1,0 +1,23 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "Python Debugger: Current File with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/Users/mam10532/Documents/GitHub/UpgrAIder/src/bump_explore/bump_docker_run.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--json_folder_path","/Users/mam10532/Documents/GitHub/bump/data/benchmark",
+                "--category","COMPILATION_FAILURE", 
+                "--specific_file","5cf5a482bd430d81257b4ecd85b3d4f7da911621.json",
+                "--temp_dir","/Users/mam10532/Documents/GitHub/bump/data"
+            ]
+        }
+    ]
+}
+

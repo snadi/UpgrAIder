@@ -2,7 +2,7 @@ import subprocess
 import os
 import re
 import argparse
-from Report import RunResult, RunProblem, ProblemType
+from upgraider.Report import RunResult, RunProblem, ProblemType
 from apiexploration.Library import Library
 
 from dotenv import load_dotenv
