@@ -5,17 +5,19 @@
     "version": "0.2.0",
     "configurations": [
 
+
         {
             "name": "Python Debugger: Current File with Arguments",
             "type": "debugpy",
             "request": "launch",
-            "program": "/Users/mam10532/Documents/GitHub/UpgrAIder/src/bump_explore/bump_docker_run.py",
+            "program": "/Users/mam10532/Documents/GitHub/UpgrAIder/src/bump_explore/check_pr_release.py",
             "console": "integratedTerminal",
             "args": [
-                "--json_folder_path","/Users/mam10532/Documents/GitHub/bump/data/benchmark",
+                "--json_folder_path","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/benchmark_split/COMPILATION_FAILURE",
                 "--category","COMPILATION_FAILURE", 
-                "--specific_file","5cf5a482bd430d81257b4ecd85b3d4f7da911621.json",
-                "--temp_dir","/Users/mam10532/Documents/GitHub/bump/data"
+                "--output_dir","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/release_notes",
+                "--specific_file", "aa14451c6f218af9c08e846345d83259eb7d46a8.json"
+                
             ]
         }
     ]

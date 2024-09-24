@@ -8,3 +8,5 @@ __pycache__
 src/soretrieval.egg-info/
 src/upgraider.egg-info/
 src/bump_explore/temp/
+bump_data/
+bump_output/
