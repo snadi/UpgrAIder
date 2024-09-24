@@ -69,10 +69,10 @@ def process_for_release(data,json_file_path,output_dir,logger):
         logger.info(f"Content type: {content_type}")
         logger.info(f"PR data: {pr_data}")
         # Decide which extraction method to use based on content type
-        if content_type == "json":
-            # Extract the release notes and other information from JSON
-            release_info = extract_release_info_from_json(pr_data, data, json_file_path, pr_url)
-        elif content_type == "html":
+        # if content_type == "json":
+        #     # Extract the release notes and other information from JSON
+        #     release_info = extract_release_info_from_json(pr_data, data, json_file_path, pr_url)
+        if content_type == "html":
             # Extract the release notes from HTML content
             release_info = extract_release_notes_from_html(pr_data, data, json_file_path, pr_url)
         else:
@@ -88,8 +88,6 @@ def process_for_release(data,json_file_path,output_dir,logger):
         print("Failed to process the pull request.")
   
     
-
-
 # Function to retrieve the PR data from the URL
 def get_pr_data(pr_url):
     headers = {
@@ -135,45 +133,38 @@ def extract_release_notes_from_html(html_content,json_data,json_file_path,pr_url
     :param html_content: A string containing HTML content of the PR
     :return: Extracted release notes or a message indicating no release notes were found
     """
-
     # Try to locate common tags that might contain release notes
     release_notes = None
-    release_info = []
+    release_info = {}
     
     # Parse the HTML content using BeautifulSoup
     soup = BeautifulSoup(html_content, 'html.parser')
 
     # Try to locate the text with release notes
-    divs = soup.find_all('div')
-
-    for div in divs:
-        print(div.text)
-        if 'release notes' in div.text.lower():
-            release_notes = div.text.strip()
-            break
-
-    details = soup.find('details', open=True)
+   
+    details = soup.find_all('details')
     release_notes = None
 
     if details:
-        summary = details.find('summary')
-        if summary and 'release notes' in summary.text.lower():
-            # Extract the text inside the <blockquote> and any <ul> for structured release notes
-            blockquote = details.find('blockquote')
-            ul_list = details.find_all('ul')
+        for detail in details:      
+            summary = detail.find('summary')
+            if summary and 'release notes' in summary.text.lower():
+                # Extract the text inside the <blockquote> and any <ul> for structured release notes
+                blockquote = detail.find('blockquote')
+                ul_list = detail.find_all('ul')
 
-            release_notes = ""
-            
-            # Extract and format the blockquote content
-            if blockquote:
-                release_notes += blockquote.text.strip() + "\n\n"
-            
-            # Extract and format the list of bullet points
-            if ul_list:
-                for ul in ul_list:
-                    for li in ul.find_all('li'):
-                        release_notes += f"- {li.text.strip()}\n"
-    
+                release_notes = ""
+                
+                # Extract and format the blockquote content
+                if blockquote:
+                    release_notes += blockquote.text.strip() + "\n\n"
+                
+                # Extract and format the list of bullet points
+                if ul_list:
+                    for ul in ul_list:
+                        for li in ul.find_all('li'):
+                            release_notes += f"- {li.text.strip()}\n"
+        
     # If release notes found, return them
     if release_notes:
          # Extract data from the JSON structure provided
@@ -181,46 +172,44 @@ def extract_release_notes_from_html(html_content,json_data,json_file_path,pr_url
         previous_version = json_data['updatedDependency']['previousVersion']
         new_version = json_data['updatedDependency']['newVersion']
         
-        # Append the extracted data
-        release_info.append({
-            "commitID": os.path.basename(json_file_path),
-            "prURL": pr_url,
-            "dependencyGroupID": dependency_group_id,
-            "previousVersion": previous_version,
-            "newVersion": new_version,
-            "releaseNotes": release_notes
-        })
+        release_info["commitID"] = os.path.basename(json_file_path)
+        release_info["prURL"] = pr_url
+        release_info["dependencyGroupID"] = dependency_group_id
+        release_info["previousVersion"] = previous_version
+        release_info["newVersion"] = new_version
+        release_info["releaseNotes"] = release_notes
+        
         return release_info
     else:
-        return []
+        return {}
 
-# Function to check if PR has release notes and return the required data
-def extract_release_info_from_json(pr_data, json_data, json_file_path, pr_url):
-    release_info = []
+# # Function to check if PR has release notes and return the required data
+# def extract_release_info_from_json(pr_data, json_data, json_file_path, pr_url):
+#     release_info = {}
     
-    # Extract the PR body where release notes might be present
-    pr_body = pr_data.get('body', '')
+#     # Extract the PR body where release notes might be present
+#     pr_body = pr_data.get('body', '')
     
-    # Check if the PR contains release notes
-    if 'release notes' in pr_body.lower():
-        release_notes = pr_body.split("Release Notes:")[1].strip() if "Release Notes:" in pr_body else "No notes"
+#     # Check if the PR contains release notes
+#     if 'release notes' in pr_body.lower():
+#         release_notes = pr_body.split("Release Notes:")[1].strip() if "Release Notes:" in pr_body else "No notes"
         
-        # Extract data from the JSON structure provided
-        dependency_group_id = json_data['updatedDependency']['dependencyGroupID']
-        previous_version = json_data['updatedDependency']['previousVersion']
-        new_version = json_data['updatedDependency']['newVersion']
+#         # Extract data from the JSON structure provided
+#         dependency_group_id = json_data['updatedDependency']['dependencyGroupID']
+#         previous_version = json_data['updatedDependency']['previousVersion']
+#         new_version = json_data['updatedDependency']['newVersion']
         
-        # Append the extracted data
-        release_info.append({
-            "commitID": os.path.basename(json_file_path),
-            "prURL": pr_url,
-            "dependencyGroupID": dependency_group_id,
-            "previousVersion": previous_version,
-            "newVersion": new_version,
-            "releaseNotes": release_notes
-        })
+#         # Populate the dictionary with the extracted data
+#         release_info = {
+#             "commitID": os.path.basename(json_file_path),
+#             "prURL": pr_url,
+#             "dependencyGroupID": dependency_group_id,
+#             "previousVersion": previous_version,
+#             "newVersion": new_version,
+#             "releaseNotes": release_notes
+#         }
     
-    return release_info
+#     return release_info
 
 # Function to load JSON file
 def load_json_file(json_file_path):
@@ -230,8 +219,9 @@ def load_json_file(json_file_path):
 # Function to write release info to CSV
 def write_to_csv(release_info,output_dir):
     if release_info:
-        df = pd.DataFrame(release_info)
-        csv_file_path = os.path.join(output_dir,release_info["commitID"],"release_info.csv")
+        # Convert the release_info dictionary to a DataFrame
+        df = pd.DataFrame([release_info])
+        csv_file_path = os.path.join(output_dir,release_info["dependencyGroupID"]+"_"+release_info["previousVersion"]+"_"+release_info["newVersion"]+"_release_notes.csv")
         df.to_csv(csv_file_path, index=False)
         print(f"CSV file {csv_file_path} created successfully.")
     else:
