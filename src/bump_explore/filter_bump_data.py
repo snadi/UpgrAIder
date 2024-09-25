@@ -176,7 +176,7 @@ def main():
 
     args = parser.parse_args()
     timeout=1000
-    # Create the DockerHandler (assuming it's defined somewhere else in your code)
+    # Create the DockerHandler 
     docker_handler = DockerHandler(hostname, username, ssh_key_path,args.output_dir,ssh_passphrase)
 
     # Process files in the provided folder

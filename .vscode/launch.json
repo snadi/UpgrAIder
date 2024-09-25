@@ -10,13 +10,13 @@
             "name": "Python Debugger: Current File with Arguments",
             "type": "debugpy",
             "request": "launch",
-            "program": "/Users/mam10532/Documents/GitHub/UpgrAIder/src/bump_explore/check_pr_release.py",
+            "program": "/Users/mam10532/Documents/GitHub/UpgrAIder/src/bump_explore/generate_meta_BUMP.py",
             "console": "integratedTerminal",
             "args": [
                 "--json_folder_path","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/benchmark_split/COMPILATION_FAILURE",
-                "--category","COMPILATION_FAILURE", 
-                "--output_dir","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/release_notes",
-                "--specific_file", "aa14451c6f218af9c08e846345d83259eb7d46a8.json"
+                "--exclude_dir","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/benchmark_compilation_exclude", 
+                "--timeout_dir", "/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/benchmark_compile_timeout",
+                "--output_dir","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/meta"
                 
             ]
         }

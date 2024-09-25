@@ -10,3 +10,4 @@ src/upgraider.egg-info/
 src/bump_explore/temp/
 bump_data/
 bump_output/
+.vscode/launch.json

@@ -123,7 +123,7 @@ def get_pr_data(pr_url):
     except Exception as e:
         print(f"Error processing pr url: {e}")
         print("Raw response content:", response.text)
-        return None
+        return None,None
       
         
 def extract_release_notes_from_html(html_content,json_data,json_file_path,pr_url):

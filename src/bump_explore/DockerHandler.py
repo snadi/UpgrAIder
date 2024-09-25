@@ -78,19 +78,16 @@ class DockerHandler:
     def run_docker_command(self, command):
         """Runs a Docker command on the remote server and returns output and error."""
         print(f"Running command: {command}")
-        self.logger.info(f"Running command: {command}")
         stdin, stdout, stderr = self.ssh_client.exec_command(command)
         output = stdout.read().decode('utf-8')
         error = stderr.read().decode('utf-8')
-        # if output:
-        #     self.logger.info(f"Command {command} output: {output}")
-        # if error:
-        #     self.logger.error(f"Command {command} error: {error}")
+        print(f"Command {command} output: {output}")
+        print(f"Command {command} error: {error}")
 
         return output, error
     
     # Function to retrieve files from a Docker image on a remote server via SSH
-    def get_files_from_docker_via_ssh(self, image_name, file_paths, local_temp_dir):
+    def get_files_from_docker_via_ssh(self, image_name, file_paths, local_temp_dir): 
         """
         Extract and store the contents of the specified files from a Docker image on a remote server via SSH.
 
