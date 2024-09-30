@@ -77,12 +77,12 @@ class DockerHandler:
 
     def run_docker_command(self, command):
         """Runs a Docker command on the remote server and returns output and error."""
-        print(f"Running command: {command}")
+        # print(f"Running command: {command}")
         stdin, stdout, stderr = self.ssh_client.exec_command(command)
         output = stdout.read().decode('utf-8')
         error = stderr.read().decode('utf-8')
-        print(f"Command {command} output: {output}")
-        print(f"Command {command} error: {error}")
+        # print(f"Command {command} output: {output}")
+        # print(f"Command {command} error: {error}")
 
         return output, error
     
@@ -96,6 +96,8 @@ class DockerHandler:
         :param file_paths: A list of file paths to retrieve from the Docker image.
         :param local_temp_dir: The local directory to store the files.
         """
+        self.logger.error("Reteriving error files form docker container.")
+        print("Reteriving error files form docker container.")
         try:
             # Create a temporary container from the image and keep it running
             stdin, stdout, stderr = self.ssh_client.exec_command(f"docker create -it {image_name} /bin/sh")
@@ -140,6 +142,7 @@ class DockerHandler:
                     self.logger.error(f"Failed to retrieve {file_path} from the Docker image: {e}")
                     print(f"Failed to retrieve {file_path} from the Docker image: {e}")
 
+            print("-----------------")
             # Stop and remove the container
             self.ssh_client.exec_command(f"docker rm -f {container_id}")
             sftp.close()
@@ -157,6 +160,9 @@ class DockerHandler:
         :param image_id: ID of the Docker image to start the container from.
         """
         try:
+            print("Updating code in Docker container...")
+            self.logger.info("Updating code in Docker container...")
+            
             # Step 1: Start a new container from the image ID
             start_container_cmd = f'docker run -d {image_id} /bin/sh -c "while true; do sleep 1000; done"'
             container_id, error= self.run_docker_command(start_container_cmd)

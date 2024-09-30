@@ -245,26 +245,29 @@ def fix_files_with_llm(error_files, local_temp_dir,library, model="gpt-4o-mini",
 
 #Main function to process the JSON files
 def process_json_file(logger,docker_handler, file_path, no_download_files, output_dir,library,model,db_source,use_references,threshold):
+    
+    # Check if the output directory exists, if not, create it
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
     data = load_json_file(file_path)
 
-    pre_command = data.get('preCommitReproductionCommand')
+    # pre_command = data.get('preCommitReproductionCommand')
     breaking_command = data.get('breakingUpdateReproductionCommand')
-    
     # Extract Docker image name from the breaking update command
     breaking_image_name = extract_docker_image_name(data, 'breakingUpdateReproductionCommand')
 
-    # Run pre-commit Docker command
-    pre_output, pre_error = docker_handler.run_docker_command(pre_command)
-    pre_success, pre_failure_message = check_for_errors(pre_output, pre_error)
+    # # Run pre-commit Docker command
+    # pre_output, pre_error = docker_handler.run_docker_command(pre_command)
+    # pre_success, pre_failure_message = check_for_errors(pre_output, pre_error)
 
-    # Report results for pre-commit
-    if pre_success:
-        print(f"{file_path} - Pre-commit build/test succeeded.")
-        logger.info(f"{file_path} - Pre-commit build/test succeeded.")
-    else:
-        print(f"{file_path} - Pre-commit build/test failed. Error: {pre_failure_message}")
-        logger.error(f"{file_path} - Pre-commit build/test failed. Error: {pre_failure_message}")   
-        return -1,-1
+    # # Report results for pre-commit
+    # if pre_success:
+    #     print(f"{file_path} - Pre-commit build/test succeeded.")
+    #     logger.info(f"{file_path} - Pre-commit build/test succeeded.")
+    # else:
+    #     print(f"{file_path} - Pre-commit build/test failed. Error: {pre_failure_message}")
+    #     logger.error(f"{file_path} - Pre-commit build/test failed. Error: {pre_failure_message}")   
+    #     return -1,-1
 
     # Run breaking update Docker command
     breaking_output, breaking_error = docker_handler.run_docker_command(breaking_command)
@@ -272,20 +275,21 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
 
     # Report results for breaking update
     if breaking_success:
-        print(f"{file_path} - Breaking update build/test succeeded.")
-        logger.info(f"{file_path} - Breaking update build/test succeeded.") 
+        print(f"{os.path.basename(file_path)} - Breaking update build/test succeeded.")
+        logger.info(f"{os.path.basename(file_path)} - Breaking update build/test succeeded.") 
         return -1,-1
     else:
         error_files = extract_error_file_paths(breaking_failure_message)
         pre_fix_error_files = len(error_files)
         if error_files:
-            print(f"{file_path} - Breaking update build/test failed. Files causing issues:")
-            logger.error(f"{file_path} - Breaking update build/test failed. Error: {breaking_failure_message}")
+            print(f"{os.path.basename(file_path)} - Breaking update build/test failed. Files causing issues:")
+            logger.error(f"{os.path.basename(file_path)} - Breaking update build/test failed. Error: {breaking_failure_message}")
             logger.error("Files causing issues:")
             for error_file in error_files:
                 print(f" - {error_file}")
                 logger.error(f" - {error_file}")
-
+            print("-------------------")
+            logger.info("-------------------")
             # Define local directory for temporary file storage
             local_temp_dir = os.path.join(output_dir, "temp")
             os.makedirs(local_temp_dir,exist_ok=True)
@@ -303,22 +307,26 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
                 # Fix the files causing errors using LLM
                 updated_code_map=fix_files_with_llm(error_files, local_temp_dir,library,model,db_source,use_references,threshold)
                 
-
+                print("------Rerunning container after fixes-------------")
+                logger.info("---------Rerunning container after fixes ----------")
                 # Update the code in the Docker container and rerun the necessary commands check if breaking issue is fixed
                 breaking_output, breaking_error=docker_handler.update_docker_code(updated_code_map,breaking_image_name)
                 breaking_success, breaking_failure_message = check_for_errors(breaking_output, breaking_error)
-
+             
                 # Report results for breaking update
                 if breaking_success:
-                    print(f"{error_file} - Breaking update build/test succeeded after fixes.")
-                    logger.info(f"{error_file} - Breaking update build/test succeeded after fixes.")
+                    print(f"{os.path.basename(error_file)} - Breaking update build/test succeeded after fixes.")
+                    logger.info(f"{os.path.basename(error_file)} - Breaking update build/test succeeded after fixes.")
+                    post_fix_error_files = 0
                 elif breaking_failure_message:
                     error_files = extract_error_file_paths(breaking_failure_message)
                     post_fix_error_files = len(error_files)
+                    print("-------------------")
+                    logger.info("-------------------")
                     if error_files:
-                        print(f"{file_path} - Breaking update build/test failed after fixes. Files causing issues:")
-                        logger.error(f"{file_path} - Breaking update build/test failed after fixes. Files causing issues:") 
-                        print(breaking_failure_message)
+                        print(f"{os.path.basename(file_path)} - Breaking update build/test failed after fixes. Files causing issues:")
+                        logger.error(f"{os.path.basename(file_path)} - Breaking update build/test failed after fixes. Files causing issues:") 
+                        #print(breaking_failure_message)
                         # logger.error(breaking_failure_message)
                         for error_file in error_files:
                             print(f" - {error_file}")
@@ -327,7 +335,7 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
                     print(f"Failed to reprocess {breaking_image_name}.")
                     logger.error(f"Failed to reprocess {breaking_image_name}.")
             else:
-                print(f"{error_file} - Breaking update build/test failed. No specific files identified.")
+                print(f"{os.path.basename(error_file)} - Breaking update build/test failed. No specific files identified.")
                 logger.error(f"Failed to reprocess {breaking_image_name}.")
     return  pre_fix_error_files, post_fix_error_files
 
@@ -335,7 +343,7 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
 # Main function
 def main():
     args = parse_arguments()
-    with open(os.path.join(args.output_dir, "run_data.txt"), 'w') as f:
+    with open(os.path.join(args.output_dir, "run_data.csv"), 'w') as f:
         # Process a specific file if provided
         try:      
             if args.specific_file:
@@ -362,12 +370,16 @@ def main():
                         json_file_path = os.path.join(args.json_folder_path, filename)
                         data = load_json_file(json_file_path)
                         if data.get('failureCategory') == args.category:
+                            print(f"Processing {filename}...")
                             logger=_setup_logger(f"{filename.replace(".json","")}.log",args.output_dir)
                             docker_handler.set_logger(logger)
                             library = create_library_from_json(data,"")
                             pre_fix_num,post_fix_num=process_json_file(logger,docker_handler, json_file_path,args.no_download_files,args.output_dir,library,
                                                                        args.model,args.db_source,args.use_references,args.threshold)
                             f.write(f"{filename},{pre_fix_num},{post_fix_num}\n")
+                            print("-------------------")
+                            print(f"{filename} before fix error is {pre_fix_num} and after fix error is {post_fix_num}")
+                            print("-------------------")
                         else:
                             print(f"{filename} does not match the failure category '{args.category}' and will not be processed.")
                         print(f"Processed {filename}.")    

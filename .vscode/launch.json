@@ -10,16 +10,19 @@
             "name": "Python Debugger: Current File with Arguments",
             "type": "debugpy",
             "request": "launch",
-            "program": "/Users/mam10532/Documents/GitHub/UpgrAIder/src/bump_explore/generate_meta_BUMP.py",
+            "program": "/Users/mam10532/Documents/GitHub/UpgrAIder/src/bump_explore/process_upgraider_BUMP.py",
             "console": "integratedTerminal",
             "args": [
-                "--json_folder_path","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/benchmark_split/COMPILATION_FAILURE",
-                "--exclude_dir","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/benchmark_compilation_exclude", 
-                "--timeout_dir", "/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/benchmark_compile_timeout",
-                "--output_dir","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/meta"
+                "--json_folder_path","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/experiment1",
+                "--category","COMPILATION_FAILURE", 
+                "--output_dir","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/run3",
+                "--limit_files","5"
                 
             ]
         }
     ]
 }
+
+
+
 

@@ -37,6 +37,7 @@ def process_meta(files,docker_handler,metadata_file,reproduce_message):
             print(f"Processing file: {file_path}")
             data = load_json_file(file_path)
             metadata_file.write(os.path.basename(file_path)+","+data.get('url')+","+reproduce_message+","+data['updatedDependency']['dependencyGroupID']+","+data['updatedDependency']['previousVersion']+","+data['updatedDependency']['newVersion']+",")
+            #TODO Fix issue not reteriveing any release notes
             pr_release=PRReleaseNotes(data,GITHUB_TOKEN)
             release_note=pr_release.get_release_notes()
             if release_note:
