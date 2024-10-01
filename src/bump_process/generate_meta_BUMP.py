@@ -3,10 +3,11 @@
 import argparse
 import os
 import json
-from DockerHandler import DockerHandler
-from PRReleaseNotes import PRReleaseNotes
+from utils.DockerHandler import DockerHandler
 import re
 from dotenv import load_dotenv
+from utils.util import load_json_file,extract_error_file_paths,check_for_errors
+from utils.github_util import get_url_data,extract_release_notes_from_html
 
 ## Load environment variables from .env file
 load_dotenv()
@@ -25,11 +26,6 @@ def list_files_in_folder(folder_path):
     """Returns a list of JSON files in the given folder."""
     return [os.path.join(folder_path, f) for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f)) and f.endswith('.json')]
 
-def load_json_file(file_path):
-    """Utility to load a JSON file."""
-
-    with open(file_path, 'r') as f:
-        return json.load(f)
 
 def process_meta(files,docker_handler,metadata_file,reproduce_message):
     for file_path in files:
@@ -38,13 +34,13 @@ def process_meta(files,docker_handler,metadata_file,reproduce_message):
             data = load_json_file(file_path)
             metadata_file.write(os.path.basename(file_path)+","+data.get('url')+","+reproduce_message+","+data['updatedDependency']['dependencyGroupID']+","+data['updatedDependency']['previousVersion']+","+data['updatedDependency']['newVersion']+",")
             #TODO Fix issue not reteriveing any release notes
-            pr_release=PRReleaseNotes(data,GITHUB_TOKEN)
-            release_note=pr_release.get_release_notes()
+            pr_data, content_type = get_url_data(data.get('url'),GITHUB_TOKEN)
+            if content_type == "html":
+                release_note=extract_release_notes_from_html(pr_data)
             if release_note:
                 metadata_file.write("yes-release"+",")
             else:
                 metadata_file.write("no-release"+",")
-
             timeout=1200    
             error_files=get_error_files(data,docker_handler,file_path,timeout)
             if error_files:
@@ -66,44 +62,6 @@ def process_files(json_folder_path,exclude_dir,timeout_dir,docker_handler,metada
     process_meta(exclude_file,docker_handler,metadata_file,"no-exclude")
     process_meta(timeout_files,docker_handler,metadata_file,"no-timeout")
     
-
-def check_for_errors(output):
-    success_patterns = [
-        "BUILD SUCCESS"
-    ]
-    
-    failure_patterns = [
-        "BUILD FAILURE"
-    ]
-    
-    for pattern in success_patterns:
-        if re.search(pattern, output):
-            return True, None
-    
-    for pattern in failure_patterns:
-        if re.search(pattern, output):
-            return False, output
-    
-    return False, "Unknown failure"
-
-
-def extract_error_file_paths(error_log):
-    """
-    Extracts and returns a list of file paths that caused issues in the error log.
-
-    :param error_log: A string containing the error log.
-    :return: A list of unique file paths causing issues.
-    """
-    # Regular expression to extract the file paths
-    file_path_pattern = r"\[ERROR\] (/.*\.java):\[\d+,\d+\]"
-
-    # Find all matching file paths
-    file_paths = re.findall(file_path_pattern, error_log)
-
-    # Remove duplicates
-    file_paths = list(set(file_paths))
-
-    return file_paths
 
 def get_error_files(data,docker_handler, file_path,timeout=200):
     breaking_command = data.get('breakingUpdateReproductionCommand')

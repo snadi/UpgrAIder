@@ -2,10 +2,11 @@ import os
 import shutil
 import argparse
 import logging
-from DockerHandler import DockerHandler
+from utils.DockerHandler import DockerHandler
 import json
 import re
 from dotenv import load_dotenv
+from utils import load_json_file, setup_logger,check_for_errors
 
 ## Load environment variables from .env file
 load_dotenv()
@@ -18,59 +19,6 @@ ssh_passphrase = os.getenv('SSH_PASSPHRASE')
 
 # Expand the tilde to the full path
 ssh_key_path = os.path.expanduser(ssh_key_path)
-
-def load_json_file(file_path):
-    """Utility to load a JSON file."""
-
-    with open(file_path, 'r') as f:
-        return json.load(f)
-
-def _setup_logger(logfile_name, output_dir):
-    """Sets up logging to log messages to a file."""
-    logs_output_dir = os.path.join(output_dir, "logs")
-    os.makedirs(logs_output_dir, exist_ok=True)
-    log_file = os.path.join(logs_output_dir, logfile_name)
-
-    # Create a logger instance for each log file
-    logger = logging.getLogger(logfile_name)
-    logger.setLevel(logging.INFO)
-
-    # Check if the logger already has handlers
-    if not logger.hasHandlers():
-        file_handler = logging.FileHandler(log_file)
-        file_handler.setLevel(logging.INFO)
-        stream_handler = logging.StreamHandler()
-        stream_handler.setLevel(logging.INFO)
-
-        # Define the formatter and set it for both handlers
-        formatter = logging.Formatter('%(levelname)s - %(message)s')
-        file_handler.setFormatter(formatter)
-        stream_handler.setFormatter(formatter)
-
-        logger.addHandler(file_handler)
-        logger.addHandler(stream_handler)
-
-    return logger
-
-# Function to check the output for success or errors
-def check_for_errors(output, error):
-    success_patterns = [
-        "BUILD SUCCESS"
-    ]
-    
-    failure_patterns = [
-        "BUILD FAILURE"
-    ]
-    
-    for pattern in success_patterns:
-        if re.search(pattern, output):
-            return True, None
-    
-    for pattern in failure_patterns:
-        if re.search(pattern, output):
-            return False, output
-    
-    return False, "Unknown failure"
 
 def process_json_file(logger, docker_handler, file_path,timeout=200):
     """Processes a single JSON file and returns True if it's valid."""
@@ -148,7 +96,7 @@ def process_files(json_folder_path, excluded_folder, docker_handler, output_dir,
 
             # Check if the file matches the category
             if data.get('failureCategory') == category:
-                logger = _setup_logger(f"{filename.replace('.json', '')}.log", output_dir)
+                logger = setup_logger(f"{filename.replace('.json', '')}.log", output_dir)
                 docker_handler.set_logger(logger)
 
                 # Process the JSON file

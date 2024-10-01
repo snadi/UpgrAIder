@@ -3,7 +3,7 @@ import os
 import re
 import argparse
 from dotenv import load_dotenv
-from DockerHandler import DockerHandler
+from utils.DockerHandler import DockerHandler
 import upgraider
 from upgraider import upgraide
 from upgraider.upgraide import Upgraider
@@ -12,6 +12,11 @@ from upgraider.Model import Model
 import logging
 import random
 from pathlib import Path
+from utils.util import extract_error_file_paths
+from utils.util import load_json_file
+from utils.util import select_random_files
+from utils.util import setup_logger
+from utils.util import check_for_errors
 
 ## Load environment variables from .env file
 load_dotenv()
@@ -41,114 +46,8 @@ def parse_arguments():
    
     return parser.parse_args()
 
-# Function to load JSON data
-def load_json_file(file_path):
-    with open(file_path, 'r') as json_file:
-        return json.load(json_file)
 
-def select_random_files(directory_path, category, number_of_files=20):
-     # Check if the directory exists
-    if not os.path.isdir(directory_path):
-        raise FileNotFoundError(f"The directory {directory_path} does not exist.")
-    
-    # List all .json files in the directory
-    all_files = [f for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f)) and f.endswith('.json')]
 
-    # Filter files by category
-    category_files = []
-    for file_name in all_files:
-        file_path = os.path.join(directory_path, file_name)
-        try:
-            with open(file_path, 'r') as f:
-                data = json.load(f)
-                # Check if the category exists in the JSON data (assuming 'category' is a key)
-                if data.get('failureCategory') == category:
-                    category_files.append(file_name)
-        except (json.JSONDecodeError, KeyError):
-            print(f"Error processing file {file_name}, skipping.")
-
-    # If the number of matching files is less than the number requested, return all matching files
-    if len(category_files) < number_of_files:
-        print(f"Only {len(category_files)} files match the category '{category}', returning all matching files.")
-        return category_files
-
-    # Select random files from the category list
-    selected_files = random.sample(category_files, number_of_files)
-    
-    return selected_files
-
-def _setup_logger(logfile_name, output_dir):
-   
-    """Sets up logging to log messages to a file."""
-    logs_output_dir = os.path.join(output_dir, "logs")
-    os.makedirs(logs_output_dir, exist_ok=True)
-    log_file = os.path.join(logs_output_dir, logfile_name)
-
-    # Create a new logger instance for each log file
-    logger = logging.getLogger(logfile_name)  # Use logfile_name to create unique logger
-    logger.setLevel(logging.INFO)  # Set the logging level
-
-    # Check if the logger already has handlers (to avoid adding duplicate handlers)
-    if not logger.hasHandlers():
-        # Create a file handler for logging to a file
-        file_handler = logging.FileHandler(log_file)
-        file_handler.setLevel(logging.INFO)
-
-        # Create a stream handler for logging to the console
-        stream_handler = logging.StreamHandler()
-        stream_handler.setLevel(logging.INFO)
-
-        # Define the formatter and set it for both handlers
-        formatter = logging.Formatter('%(levelname)s - %(message)s')
-        file_handler.setFormatter(formatter)
-        stream_handler.setFormatter(formatter)
-
-        # Add both handlers to the logger
-        logger.addHandler(file_handler)
-        logger.addHandler(stream_handler)
-
-    return logger
-
-# Function to check the output for success or errors
-def check_for_errors(output, error):
-    
-    success_patterns = [
-        "BUILD SUCCESS"
-    ]
-    
-    failure_patterns = [
-        "BUILD FAILURE",
-        "COMPILATION FAILURE"
-    ]
-    
-    for pattern in success_patterns:
-        if re.search(pattern, output, re.IGNORECASE):
-            return True, None
-    
-    for pattern in failure_patterns:
-        if re.search(pattern, output, re.IGNORECASE):
-            return False, output
-    
-    return False, "Unknown failure"
-
-#Function to extract the file paths causing issues from the error log
-def extract_error_file_paths(error_log):
-    """
-    Extracts and returns a list of file paths that caused issues in the error log.
-
-    :param error_log: A string containing the error log.
-    :return: A list of unique file paths causing issues.
-    """
-    # Regular expression to extract the file paths
-    file_path_pattern = r"\[ERROR\] (/.*\.java):\[\d+,\d+\]"
-
-    # Find all matching file paths
-    file_paths = re.findall(file_path_pattern, error_log)
-
-    # Remove duplicates
-    file_paths = list(set(file_paths))
-
-    return file_paths
 # Function to extract the Docker image name from the JSON data
 def extract_docker_image_name(data, command_key):
     # Extract the Docker run command from the JSON
@@ -180,13 +79,6 @@ def create_library_from_json(libinfo, libpath):
 
     return library
 
-def _delete_temp_folder(output_dir):
-    path = Path(os.join(output_dir,"temp"))
-    try:
-        path.rmdir()
-        print("Directory removed successfully")
-    except OSError as o:
-        print(f"Error, {o.strerror}: {path}")
 
 def fix_files_with_llm(error_files, local_temp_dir,library, model="gpt-4o-mini", db_source="modelonly", use_references=True, threshold=0.5):
     """
@@ -230,17 +122,6 @@ def fix_files_with_llm(error_files, local_temp_dir,library, model="gpt-4o-mini",
             print(f"Error while processing {file_path}: {e}")
         
     return updated_code_map
-
-# def _read_files_paths_from_folder(local_temp_dir):
-#     error_files = []
-#     for root, _, files in os.walk(local_temp_dir):
-#         for file in files:
-#             if(file.startswith('.')):
-#                 continue
-#             if os.path.isdir(file):
-#                 continue
-#             error_files.append(os.path.join(root, file))
-#     return error_files
 
 
 #Main function to process the JSON files
@@ -343,12 +224,15 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
 # Main function
 def main():
     args = parse_arguments()
+    #check that output directory exists
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
     with open(os.path.join(args.output_dir, "run_data.csv"), 'w') as f:
         # Process a specific file if provided
         try:      
             if args.specific_file:
                 specific_file_path = os.path.join(args.json_folder_path, args.specific_file)
-                logger=_setup_logger(f"{args.specific_file.replace(".json","")}.log",args.output_dir)
+                logger=setup_logger(f"{args.specific_file.replace(".json","")}.log",args.output_dir)
                 docker_handler = DockerHandler(hostname, username, ssh_key_path,args.output_dir,ssh_passphrase,logger)
                 if os.path.exists(specific_file_path):
                     library = create_library_from_json(load_json_file(specific_file_path),"")
@@ -371,7 +255,7 @@ def main():
                         data = load_json_file(json_file_path)
                         if data.get('failureCategory') == args.category:
                             print(f"Processing {filename}...")
-                            logger=_setup_logger(f"{filename.replace(".json","")}.log",args.output_dir)
+                            logger=setup_logger(f"{filename.replace(".json","")}.log",args.output_dir)
                             docker_handler.set_logger(logger)
                             library = create_library_from_json(data,"")
                             pre_fix_num,post_fix_num=process_json_file(logger,docker_handler, json_file_path,args.no_download_files,args.output_dir,library,
