@@ -10,16 +10,18 @@
             "name": "Python Debugger: Current File with Arguments",
             "type": "debugpy",
             "request": "launch",
-            "program": "/Users/mam10532/Documents/GitHub/UpgrAIder/src/bump_process/extract_release_notes.py",
+            "program": "/Users/mam10532/Documents/GitHub/UpgrAIder/src/bump_process/process_upgraider_BUMP.py",
             "console": "integratedTerminal",
             "args": [
-                "--json_folder_path","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/release_notes_exp",
-                "--output_dir","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/releaseRepo"
+                "--json_folder_path","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/experiment_release",
+                "--category","COMPILATION_FAILURE", 
+                "--output_dir","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/run_release_1",
+                "--limit_files","1",
+                "--db_name","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/release_notes_db/releases.db"
+                
             ]
         }
     ]
 }
-
-
 
 

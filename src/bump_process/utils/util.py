@@ -64,6 +64,12 @@ def select_random_files(directory_path, category, number_of_files=20):
 
     return selected_files 
 
+#Function to read log files from directory
+def read_log_files_paths_from_folder(dir):
+    files_list = [os.path.join(dir, f) for f in os.listdir(dir) if os.path.isfile(os.path.join(dir, f)) and f.endswith('.log')]       
+            
+    return files_list
+
 # Function to setup logging
 def setup_logger(logfile_name, output_dir):
    

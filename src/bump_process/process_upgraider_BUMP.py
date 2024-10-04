@@ -17,6 +17,7 @@ from utils.util import load_json_file
 from utils.util import select_random_files
 from utils.util import setup_logger
 from utils.util import check_for_errors
+from process_release_db import get_library_release_notes
 
 ## Load environment variables from .env file
 load_dotenv()
@@ -43,6 +44,7 @@ def parse_arguments():
     parser.add_argument('--threshold', type=float, default=0.5, help='Threshold for LLM model.')
     parser.add_argument('--model', type=str, default="gpt-4o-mini", help='Model to use for LLM.')
     parser.add_argument('--db_source', type=str, default="modelonly", help='Data source for LLM.')
+    parser.add_argument('--db_name', type=str, help='Databse for release notes.')
    
     return parser.parse_args()
 
@@ -80,7 +82,7 @@ def create_library_from_json(libinfo, libpath):
     return library
 
 
-def fix_files_with_llm(error_files, local_temp_dir,library, model="gpt-4o-mini", db_source="modelonly", use_references=True, threshold=0.5):
+def fix_files_with_llm(error_files, local_temp_dir,library,db_name,model="gpt-4o-mini", db_source="modelonly", use_references=True, threshold=0.5):
     """
     Fixes the code in files causing errors using LLM and saves the updated code in separate files for comparison.
     """
@@ -92,6 +94,8 @@ def fix_files_with_llm(error_files, local_temp_dir,library, model="gpt-4o-mini",
             local_file_path = f"{local_temp_dir}/{os.path.basename(file_path)}"
             updated_file_path = f"{local_temp_dir}/updated/{os.path.basename(file_path)}"
             
+            release_notes=get_library_release_notes(db_name,library.name,library.currentversion,library.baseversion)
+
             with open(local_file_path, 'r') as f:
                     content =f.readlines()
                     remote_file_path = content[0].strip()
@@ -125,7 +129,7 @@ def fix_files_with_llm(error_files, local_temp_dir,library, model="gpt-4o-mini",
 
 
 #Main function to process the JSON files
-def process_json_file(logger,docker_handler, file_path, no_download_files, output_dir,library,model,db_source,use_references,threshold):
+def process_json_file(logger,docker_handler, file_path, no_download_files, output_dir,library,model,db_source,use_references,threshold,db_name):
     
     # Check if the output directory exists, if not, create it
     if not os.path.exists(output_dir):
@@ -186,7 +190,7 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
                     print(f"Files causing issues downloaded to {local_temp_dir}.")
                     
                 # Fix the files causing errors using LLM
-                updated_code_map=fix_files_with_llm(error_files, local_temp_dir,library,model,db_source,use_references,threshold)
+                updated_code_map=fix_files_with_llm(error_files,local_temp_dir,library,db_name,model,db_source,use_references,threshold)
                 
                 print("------Rerunning container after fixes-------------")
                 logger.info("---------Rerunning container after fixes ----------")
@@ -259,7 +263,7 @@ def main():
                             docker_handler.set_logger(logger)
                             library = create_library_from_json(data,"")
                             pre_fix_num,post_fix_num=process_json_file(logger,docker_handler, json_file_path,args.no_download_files,args.output_dir,library,
-                                                                       args.model,args.db_source,args.use_references,args.threshold)
+                                                                       args.model,args.db_source,args.use_references,args.threshold,args.db_name)
                             f.write(f"{filename},{pre_fix_num},{post_fix_num}\n")
                             print("-------------------")
                             print(f"{filename} before fix error is {pre_fix_num} and after fix error is {post_fix_num}")

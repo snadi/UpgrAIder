@@ -40,12 +40,12 @@ def get_url_data(url,github_token):
 def extract_release_notes(release_data):
     #Extract release notes (everything before the "Assets" part)
     # We assume the release notes end where "Assets" starts
-    release_notes_pattern = r"JasperReports\s+\d+\.\d+\.\d+\s*(.*?)\s*Assets"
+    release_notes_pattern = r"\s+\d+\.\d+\.\d+\s*(.*?)\s*Assets"
     release_notes_match = re.search(release_notes_pattern, release_data, re.DOTALL)
 
     if release_notes_match:
         release_notes = release_notes_match.group(1)
-        print("\nRelease Notes:\n", release_notes)
+        #print("\nRelease Notes:\n", release_notes)
         return release_notes
     else:
         print("Release notes not found.")
@@ -53,11 +53,11 @@ def extract_release_notes(release_data):
 
 def extract_version_release(release_data):
     # Extract the version number from the release data
-    version_pattern = r"JasperReports\s+(\d+\.\d+\.\d+)"
+    version_pattern = r"(\d+\.\d+\.\d+)"
     version_match = re.search(version_pattern, release_data)
 
     if version_match:
-        version = version_match.group(1)
+        version = version_match.group(0)
         print(f"Version: {version}")
         return version
     else:
@@ -73,10 +73,8 @@ def process_release_notes_html(html_data):
     if divs:
         for div in divs:
             print(div.text)
-            # 1. Extract JasperReports version
             version= extract_version_release(div.text)
             if version:
-                # 2. Extract release notes
                 release_notes = extract_release_notes(div.text)
                 if release_notes:
                     release_notes_dict[version] = release_notes
