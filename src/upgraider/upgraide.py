@@ -29,13 +29,28 @@ class Upgraider:
         use_references: bool,
         threshold: float = 0.0,
         output_dir: str = None,
+        use_embeddings: bool = False,
+        db_name: str = None,
+        errorFile: str = None,
     ):
 
         prompt_text = construct_fixing_prompt(
             original_code=code_snippet.code,
             use_references=use_references,
             threshold=threshold,
+            use_embeddings=use_embeddings,
+            db_name=db_name,
+            library=library,
         )
+
+        #write updated prompt to file
+        prompt_output_dir = os.path.join(output_dir, "prompt")
+        if not os.path.exists(prompt_output_dir):
+            os.makedirs(prompt_output_dir)
+        prompt_file_path = os.path.join(prompt_output_dir, f"{errorFile}_prompt.txt")
+        with open(prompt_file_path, "w") as f:
+            f.write(prompt_text)
+
 
         model_response = self.model.query(prompt_text)
 

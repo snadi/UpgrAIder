@@ -10,6 +10,8 @@ from upgraider.Database import (
 )
 from os import environ as env
 from dotenv import load_dotenv
+from apiexploration.Library import Library
+from bump_process.process_release_db import get_library_release_notes
 
 load_dotenv(override=True)
 
@@ -29,12 +31,20 @@ def construct_fixing_prompt(
     original_code: str,
     use_references: bool,
     threshold: float = None,
+    use_embeddings: bool = False,
+    db_name: str = None,
+    library: Library = None,
 ):
 
     if use_references is True:
-        references = get_reference_list(
-            original_code=original_code, threshold=threshold
+        if use_embeddings is True:
+            references = get_reference_list(
+                original_code=original_code, threshold=threshold
         )
+        else:
+            references = get_library_release_notes(db_name,library.name,library.currentversion,library.baseversion)    
+            #convert refrences to string
+            # references_str = [f"\n{str(i+1)}. {ref['version']}: {ref['details']}" for i, ref in enumerate(references)]
     else:
         references = []
 
@@ -43,9 +53,14 @@ def construct_fixing_prompt(
         os.path.join(script_dir, "resources/chat_template.txt"), "r", encoding="utf-8"
     ) as file:
         chat_template = Template(file.read())
-        prompt_text = chat_template.substitute(
-            original_code=original_code, references="".join(references)
-        )
+        if use_embeddings:
+            prompt_text = chat_template.substitute(
+                original_code=original_code, references="".join(references)
+            )
+        else:
+            prompt_text = chat_template.substitute(
+                original_code=original_code, references=references
+            )    
 
     return prompt_text
 
