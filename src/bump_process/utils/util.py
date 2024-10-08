@@ -130,3 +130,25 @@ def read_json_files_paths_from_folder(dir):
     files_list = [os.path.join(dir, f) for f in os.listdir(dir) if os.path.isfile(os.path.join(dir, f)) and f.endswith('.json')]       
             
     return files_list
+
+
+def get_fixed_files(pre_fix_errors_files,post_fix_errors_files):
+    fixed_files = []
+    for file in pre_fix_errors_files:
+        if file not in post_fix_errors_files:
+            fixed_files.append(file)
+    return fixed_files
+
+def get_unfixed_files(pre_fix_errors_files,post_fix_errors_files):
+    unfixed_files = []
+    for file in pre_fix_errors_files:
+        if file in post_fix_errors_files:
+            unfixed_files.append(file)
+    return unfixed_files
+
+def get_new_errors(pre_fix_errors_files,post_fix_errors_files):
+    new_errors = []
+    for file in post_fix_errors_files:
+        if file not in pre_fix_errors_files:
+            new_errors.append(file)
+    return new_errors

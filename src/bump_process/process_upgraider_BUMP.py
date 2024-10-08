@@ -18,6 +18,7 @@ from utils.util import select_random_files
 from utils.util import setup_logger
 from utils.util import check_for_errors
 from process_release_db import get_library_release_notes
+from utils.util import get_fixed_files, get_unfixed_files, get_new_errors
 
 ## Load environment variables from .env file
 load_dotenv()
@@ -161,16 +162,27 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
     # Run breaking update Docker command
     breaking_output, breaking_error = docker_handler.run_docker_command(breaking_command)
     breaking_success, breaking_failure_message = check_for_errors(breaking_output, breaking_error)
-
+    error_files_path=os.path.join(output_dir,"error_files")
     # Report results for breaking update
     if breaking_success:
         print(f"{os.path.basename(file_path)} - Breaking update build/test succeeded.")
         logger.info(f"{os.path.basename(file_path)} - Breaking update build/test succeeded.") 
-        return -1,-1
+        return -1,-1,None,None
     else:
         error_files = extract_error_file_paths(breaking_failure_message)
         pre_fix_error_files = len(error_files)
         if error_files:
+            if not os.path.exists(os.path.join(output_dir,"error_files")):
+                os.makedirs(os.path.join(output_dir,"error_files"))
+            pre_fix_error_list=error_files
+            #store list of files for pre-fix
+            file_path_error=os.path.join(error_files_path,f"{os.path.basename(file_path).replace('.json','')}_error_files.txt")
+            with open(file_path_error, 'w') as f:
+                f.write("Pre-fix Error Files:\n")
+                for item in error_files:
+                    f.write("%s\n" % item)
+                f.write("------------------\n")     
+
             print(f"{os.path.basename(file_path)} - Breaking update build/test failed. Files causing issues:")
             logger.error(f"{os.path.basename(file_path)} - Breaking update build/test failed. Error: {breaking_failure_message}")
             logger.error("Files causing issues:")
@@ -207,13 +219,22 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
                     print(f"{os.path.basename(error_file)} - Breaking update build/test succeeded after fixes.")
                     logger.info(f"{os.path.basename(error_file)} - Breaking update build/test succeeded after fixes.")
                     post_fix_error_files = 0
+                    post_fix_error_list=[]
                 elif breaking_failure_message:
+                    post_fix_error_list=[]
                     error_files = extract_error_file_paths(breaking_failure_message)
                     post_fix_error_files = len(error_files)
                     print("-------------------")
                     logger.info("-------------------")
                     if error_files:
-                        print(f"{os.path.basename(file_path)} - Breaking update build/test failed after fixes. Files causing issues:")
+                        post_fix_error_list=error_files
+                        #store list of files for post-fix
+                        with open(file_path_error, 'a') as f:
+                            f.write("Post-fix Error Files:\n")
+                            for item in error_files:
+                                f.write("%s\n" % item)
+                            f.write("-------------------\n")     
+                        print("Breaking update build/test failed after fixes. Files causing issues:")
                         logger.error(f"{os.path.basename(file_path)} - Breaking update build/test failed after fixes. Files causing issues:") 
                         #print(breaking_failure_message)
                         # logger.error(breaking_failure_message)
@@ -226,7 +247,7 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
             else:
                 print(f"{os.path.basename(error_file)} - Breaking update build/test failed. No specific files identified.")
                 logger.error(f"Failed to reprocess {breaking_image_name}.")
-    return  pre_fix_error_files, post_fix_error_files
+    return  pre_fix_error_files, post_fix_error_files, pre_fix_error_list, post_fix_error_list
 
 
 # Main function
@@ -236,6 +257,7 @@ def main():
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
     with open(os.path.join(args.output_dir, "run_data.csv"), 'w') as f:
+        f.write("CommitID,Pre-fix_Count,Post-fix_Count,Fixed, Unfixed, New_Errors\n")
         # Process a specific file if provided
         try:      
             if args.specific_file:
@@ -266,12 +288,21 @@ def main():
                             logger=setup_logger(f"{filename.replace(".json","")}.log",args.output_dir)
                             docker_handler.set_logger(logger)
                             library = create_library_from_json(data,"")
-                            pre_fix_num,post_fix_num=process_json_file(logger,docker_handler, json_file_path,args.no_download_files,args.output_dir,library,
+                            pre_fix_num,post_fix_num,pre_fix_errors_files, post_fix_errors_files=process_json_file(logger,docker_handler, json_file_path,args.no_download_files,args.output_dir,library,
                                                                        args.model,args.db_source,args.use_references,args.threshold,args.db_name,args.use_embedding)
-                            f.write(f"{filename},{pre_fix_num},{post_fix_num}\n")
-                            print("-------------------")
-                            print(f"{filename} before fix error is {pre_fix_num} and after fix error is {post_fix_num}")
-                            print("-------------------")
+                           
+                            if pre_fix_num > 0 :
+                                fixed_files=get_fixed_files(pre_fix_errors_files,post_fix_errors_files)
+                                non_fixed_files=get_unfixed_files(pre_fix_errors_files,post_fix_errors_files)
+                                introducted_files=get_new_errors(pre_fix_errors_files,post_fix_errors_files)
+                                f.write(f"{filename},{pre_fix_num},{post_fix_num},{len(fixed_files)},{len(non_fixed_files)},{len(introducted_files)}\n")
+                                print("-------------------")
+                                print(f"{filename} before fix error is {pre_fix_num} and after fix error is {post_fix_num}")
+                                logger.info(f"{filename} before fix error is {pre_fix_num} and after fix error is {post_fix_num}")
+                                print("-------------------")
+                            else:
+                                print("Issue with reproduciability, breaking commit is not failing")   
+                                logger.error("Issue with reproduciability, breaking commit is not failing") 
                         else:
                             print(f"{filename} does not match the failure category '{args.category}' and will not be processed.")
                         print(f"Processed {filename}.")    

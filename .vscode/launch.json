@@ -13,10 +13,10 @@
             "program": "/Users/mam10532/Documents/GitHub/UpgrAIder/src/bump_process/process_upgraider_BUMP.py",
             "console": "integratedTerminal",
             "args": [
-                "--json_folder_path","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/experiment_release",
+                "--json_folder_path","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/debug",
                 "--category","COMPILATION_FAILURE", 
-                "--output_dir","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/run_release_test",
-                "--limit_files","1",
+                "--output_dir","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/run_debug",
+                "--limit_files","5",
                 "--use_references",
                 "--db_name","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/release_notes_db/releases.db"
                 

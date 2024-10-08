@@ -1,4 +1,4 @@
-Given the provided reference information, decide if the provided code needs to be updated.
+Given the provided numbered reference information, decide if the provided code needs to be updated.
 Focus only on updates that do not change the code's functionality and are related to outdated, deprecated, or non-existent APIs.
 You must reply in the following exact numbered format.
 1. ```The full updated code snippet in a fenced code block``` or an empty fenced code block if you don't want to update the code
