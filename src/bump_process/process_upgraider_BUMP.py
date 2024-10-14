@@ -18,7 +18,8 @@ from utils.util import select_random_files
 from utils.util import setup_logger
 from utils.util import check_for_errors
 from process_release_db import get_library_release_notes
-from utils.util import get_fixed_files, get_unfixed_files, get_new_errors
+from utils.util import get_fixed_files, get_unfixed_files, get_new_errors, get_processed_files
+
 
 ## Load environment variables from .env file
 load_dotenv()
@@ -93,11 +94,11 @@ def fix_files_with_llm(error_files, local_temp_dir,library,db_name,model="gpt-4o
     # Loop through each file causing the error
     for file_path in error_files:
         try:
+            if not os.path.exists(f"{local_temp_dir}/updated/"):
+                os.makedirs(f"{local_temp_dir}/updated/")
             local_file_path = f"{local_temp_dir}/{os.path.basename(file_path)}"
             updated_file_path = f"{local_temp_dir}/updated/{os.path.basename(file_path)}"
             
-            release_notes=get_library_release_notes(db_name,library.name,library.currentversion,library.baseversion)
-
             with open(local_file_path, 'r') as f:
                     content =f.readlines()
                     remote_file_path = content[0].strip()
@@ -116,6 +117,7 @@ def fix_files_with_llm(error_files, local_temp_dir,library,db_name,model="gpt-4o
                 errorFile=os.path.basename(file_path)
             )
         
+            
             # Write the updated code to a separate file (for comparison)
             with open(updated_file_path, 'w') as f:
                 # f.write("Prompt: "+model_response.prompt+'\n')
@@ -256,8 +258,12 @@ def main():
     #check that output directory exists
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
-    with open(os.path.join(args.output_dir, "run_data.csv"), 'w') as f:
-        f.write("CommitID,Pre-fix_Count,Post-fix_Count,Fixed, Unfixed, New_Errors\n")
+    new_run=False    
+    if  not os.path.exists(os.path.join(args.output_dir, "run_data.csv")):
+        new_run=True;    
+    with open(os.path.join(args.output_dir, "run_data.csv"), 'a') as f:
+        if new_run:
+            f.write("CommitID,Pre-fix_Count,Post-fix_Count,Fixed, Unfixed, New_Errors\n")
         # Process a specific file if provided
         try:      
             if args.specific_file:
@@ -277,11 +283,16 @@ def main():
                     files_list=select_random_files(args.json_folder_path,args.category,args.limit_files)
                 else:
                     files_list = [f for f in os.listdir(args.json_folder_path) if os.path.isfile(os.path.join(args.json_folder_path, f)) and f.endswith('.json')]       
-            
+
+                #filter already processed files if any
+                processed_files=get_processed_files(os.path.join(args.output_dir,"logs"))
                 docker_handler = DockerHandler(hostname, username, ssh_key_path,args.output_dir,ssh_passphrase)
                 for filename in files_list:
                     if filename.endswith('.json'):
-                        json_file_path = os.path.join(args.json_folder_path, filename)
+                        if filename.replace('.json', '') in processed_files:
+                            print(f"{filename} has already been processed and will be skipped.")
+                            continue
+                        json_file_path = os.path.join(args.json_folder_path, filename) 
                         data = load_json_file(json_file_path)
                         if data.get('failureCategory') == args.category:
                             print(f"Processing {filename}...")

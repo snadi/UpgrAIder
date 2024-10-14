@@ -12,6 +12,8 @@ from os import environ as env
 from dotenv import load_dotenv
 from apiexploration.Library import Library
 from bump_process.process_release_db import get_library_release_notes
+from utils.util import format_release_notes
+import re
 
 load_dotenv(override=True)
 
@@ -42,11 +44,20 @@ def construct_fixing_prompt(
                 original_code=original_code, threshold=threshold
         )
         else:
-            references = get_library_release_notes(db_name,library.name,library.currentversion,library.baseversion)    
+            #extract version number from '8.1.11.v20130520' to be 8.1.11 use regex to remove the .v part
+            #check if the version has the .v part in string 
+            if ".v" in library.currentversion:
+                library.currentversion = re.sub(r"\.v.*", "", library.currentversion)
+            if ".v" in library.baseversion:
+             library.baseversion = re.sub(r"\.v.*", "", library.baseversion)      
+            references = get_library_release_notes(db_name,library.name,library.currentversion,library.baseversion)  
+            references= format_release_notes(references) 
             #convert refrences to string
             # references_str = [f"\n{str(i+1)}. {ref['version']}: {ref['details']}" for i, ref in enumerate(references)]
     else:
         references = []
+
+   
 
     script_dir = os.path.dirname(__file__)
     with open(
@@ -58,6 +69,8 @@ def construct_fixing_prompt(
                 original_code=original_code, references="".join(references)
             )
         else:
+            if len(references) == 0:
+                 references = "No references provided"
             prompt_text = chat_template.substitute(
                 original_code=original_code, references=references
             )    

@@ -13,7 +13,7 @@ from upgraider.Report import (
     RunResult,
     FixStatus,
 )
-
+from utils.util import write_output_to_file
 
 Import = namedtuple("Import", ["module", "name", "alias"])
 
@@ -43,13 +43,14 @@ class Upgraider:
             library=library,
         )
 
-        #write updated prompt to file
-        prompt_output_dir = os.path.join(output_dir, "prompt")
-        if not os.path.exists(prompt_output_dir):
-            os.makedirs(prompt_output_dir)
-        prompt_file_path = os.path.join(prompt_output_dir, f"{errorFile}_prompt.txt")
-        with open(prompt_file_path, "w") as f:
-            f.write(prompt_text)
+        write_output_to_file(output_dir, "prompt", errorFile, prompt_text)
+        # #write updated prompt to file
+        # prompt_output_dir = os.path.join(output_dir, "prompt")
+        # if not os.path.exists(prompt_output_dir):
+        #     os.makedirs(prompt_output_dir)
+        # prompt_file_path = os.path.join(prompt_output_dir, f"{errorFile}_prompt.txt")
+        # with open(prompt_file_path, "w") as f:
+        #     f.write(prompt_text)
 
 
         model_response = self.model.query(prompt_text)
@@ -58,15 +59,24 @@ class Upgraider:
         parsed_model_response.prompt = prompt_text
         parsed_model_response.library = library
 
+        write_output_to_file(output_dir, "llm_response", errorFile, model_response)
+        # #write complete response to file
+        # response_output_dir = os.path.join(output_dir, "llm_response")
+        # if not os.path.exists(response_output_dir):
+        #     os.makedirs(response_output_dir)
+        # response_file_path = os.path.join(response_output_dir, f"{errorFile}_response.txt")
+        # with open(response_file_path, "w") as f:
+        #     f.write(model_response)    
+
         if parsed_model_response.update_status == UpdateStatus.UPDATE:
             parsed_model_response.updated_code = _fix_imports(
                 old_code=parsed_model_response.original_code,
                 updated_code=parsed_model_response.updated_code,
             )
 
-        if output_dir is not None:
-            updated_file_path = _write_updated_code(output_dir, parsed_model_response)
-            parsed_model_response.updated_code.filename = updated_file_path
+        # if output_dir is not None:
+        #     updated_file_path = _write_updated_code(output_dir, parsed_model_response)
+        #     parsed_model_response.updated_code.filename = updated_file_path
 
         return parsed_model_response
 

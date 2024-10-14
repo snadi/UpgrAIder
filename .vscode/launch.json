@@ -6,6 +6,7 @@
     "configurations": [
 
 
+
         {
             "name": "Python Debugger: Current File with Arguments",
             "type": "debugpy",
@@ -13,12 +14,12 @@
             "program": "/Users/mam10532/Documents/GitHub/UpgrAIder/src/bump_process/process_upgraider_BUMP.py",
             "console": "integratedTerminal",
             "args": [
-                "--json_folder_path","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/debug",
+                "--json_folder_path","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/experiment_release",
                 "--category","COMPILATION_FAILURE", 
-                "--output_dir","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/run_debug",
+                "--output_dir","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/run_debug_3",
                 "--limit_files","5",
                 "--use_references",
-                "--db_name","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/release_notes_db/releases.db"
+                "--db_name","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/release_notes_db/releases.db"
                 
             ]
         }

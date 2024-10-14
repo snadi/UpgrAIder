@@ -125,12 +125,13 @@ def check_db_for_library(library_name, db_name):
 def get_library_release_notes(db_name,library_name,currentversion,old_version):
     conn = sqlite3.connect(db_name)
     cursor = conn.cursor()
-    #get all versions between old and current version
+
+
     cursor.execute('''
         SELECT version,details FROM release_notes WHERE library_id = (SELECT id FROM library WHERE library_name = ?) AND version > ? AND version <= ?
     ''', (library_name,old_version,currentversion))
     result = cursor.fetchall()
-    
+   
     release_notes = []
     if result:
         for row in result:
@@ -140,7 +141,5 @@ def get_library_release_notes(db_name,library_name,currentversion,old_version):
             }
             release_notes.append(release_note)  # Add each release note as a dictionary to the list
             
-        conn.close()
-        return release_notes 
     conn.close()
-    return None    
+    return release_notes    

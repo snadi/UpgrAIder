@@ -8,6 +8,27 @@ import logging
 
 
 
+#Function to format release notes into a formated string
+def format_release_notes(data):
+    # Create a dictionary to group details by version
+    grouped_versions = {}
+    for entry in data:
+        version = entry['version']
+        details = entry['details']
+        if version not in grouped_versions:
+            grouped_versions[version] = []
+        grouped_versions[version].append(details)
+
+    # Build the desired string output
+    result_str = ""
+    for version, details_list in grouped_versions.items():
+        result_str += f"Version {version}:\n"
+        for detail in details_list:
+            result_str += f"- {detail}\n"
+        result_str += "\n"  # Add a new line between versions for better formatting
+
+    return result_str
+
 #Function to extract the file paths causing issues from the error log
 def extract_error_file_paths(error_log):
     """
@@ -152,3 +173,23 @@ def get_new_errors(pre_fix_errors_files,post_fix_errors_files):
         if file not in pre_fix_errors_files:
             new_errors.append(file)
     return new_errors
+
+def write_output_to_file(dir_path,dir,filename,data):
+    data_output_dir = os.path.join(dir_path, dir)
+    if not os.path.exists(data_output_dir):
+        os.makedirs(data_output_dir)
+    file_path = os.path.join(data_output_dir, f"{filename}_{dir}.txt")
+    with open(file_path, "w") as f:
+        f.write(data)
+
+
+def get_processed_files(logs_output_dir):
+    """Get the list of unprocessed files from the output directory."""
+    processed_files = set()
+    # Check if the logs directory exists
+    if os.path.exists(logs_output_dir):
+        for log_file in os.listdir(logs_output_dir):
+            if log_file.endswith('.log'):
+                processed_files.add(log_file.replace('.log', ''))
+
+    return processed_files
