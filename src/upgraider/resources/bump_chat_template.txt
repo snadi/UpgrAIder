@@ -1,0 +1,22 @@
+Due to an update of Library $library_name from version $base_version to version $new_version, the code in file $file_name below is causing the following error $error.
+
+Update the provided code to fix this error. You are also provided with a numbered list of notes, extracted from Library $library_name's release notes.
+
+Focus only on updates that do not change the code's functionality and are related to the version update of Library $library_name.
+
+You must reply in the following exact numbered format.
+
+1. ```The full updated code in a fenced code block``` or an empty fenced code block if you don't want to update the code
+2. Explanation of the changes you made.
+3. List of release note numbers used (if any) to update the code. If none of the notes below were useful, say 'No notes used'
+
+Provided code:
+
+```
+$original_code
+```
+
+Provided release notes:
+$references
+
+Your Response:"

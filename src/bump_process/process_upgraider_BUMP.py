@@ -12,7 +12,7 @@ from upgraider.Model import Model
 import logging
 import random
 from pathlib import Path
-from utils.util import extract_error_file_paths
+from utils.util import extract_error_file_paths, extract_error_files_errors
 from utils.util import load_json_file
 from utils.util import select_random_files
 from utils.util import setup_logger
@@ -85,7 +85,7 @@ def create_library_from_json(libinfo, libpath):
     return library
 
 
-def fix_files_with_llm(error_files, local_temp_dir,library,db_name,model="gpt-4o-mini", db_source="modelonly", use_references=True, threshold=0.5,use_embedding=False):
+def fix_files_with_llm(error_files,error_dict,local_temp_dir,library,db_name,model="gpt-4o-mini", db_source="modelonly", use_references=True, threshold=0.5,use_embedding=False):
     """
     Fixes the code in files causing errors using LLM and saves the updated code in separate files for comparison.
     """
@@ -114,7 +114,8 @@ def fix_files_with_llm(error_files, local_temp_dir,library,db_name,model="gpt-4o
                 output_dir=local_temp_dir,
                 use_embeddings=use_embedding,
                 db_name=db_name,
-                errorFile=os.path.basename(file_path)
+                errorFile=os.path.basename(file_path),
+                error=error_dict[file_path]
             )
         
             
@@ -172,6 +173,7 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
         return -1,-1,None,None
     else:
         error_files = extract_error_file_paths(breaking_failure_message)
+        error_dict=extract_error_files_errors(breaking_failure_message)
         pre_fix_error_files = len(error_files)
         if error_files:
             if not os.path.exists(os.path.join(output_dir,"error_files")):
@@ -208,7 +210,7 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
                     print(f"Files causing issues downloaded to {local_temp_dir}.")
                     
                 # Fix the files causing errors using LLM
-                updated_code_map=fix_files_with_llm(error_files,local_temp_dir,library,db_name,model,db_source,use_references,threshold,use_embedding)
+                updated_code_map=fix_files_with_llm(error_files,error_dict,local_temp_dir,library,db_name,model,db_source,use_references,threshold,use_embedding)
                 
                 print("------Rerunning container after fixes-------------")
                 logger.info("---------Rerunning container after fixes ----------")

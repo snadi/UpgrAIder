@@ -36,6 +36,8 @@ def construct_fixing_prompt(
     use_embeddings: bool = False,
     db_name: str = None,
     library: Library = None,
+    error_file: str = None,
+    error: str = None,
 ):
 
     if use_references is True:
@@ -57,11 +59,13 @@ def construct_fixing_prompt(
     else:
         references = []
 
-   
-
     script_dir = os.path.dirname(__file__)
+    if use_embeddings:
+        template_path=os.path.join(script_dir,"resources/chat_template.txt")
+    else:
+        template_path=os.path.join(script_dir,"resources/bump_chat_template.txt")
     with open(
-        os.path.join(script_dir, "resources/chat_template.txt"), "r", encoding="utf-8"
+       template_path, "r", encoding="utf-8"
     ) as file:
         chat_template = Template(file.read())
         if use_embeddings:
@@ -70,11 +74,17 @@ def construct_fixing_prompt(
             )
         else:
             if len(references) == 0:
-                 references = "No references provided"
+                references = "No references provided"
             prompt_text = chat_template.substitute(
-                original_code=original_code, references=references
+                library_name=library.name,
+                base_version= library.baseversion,
+                new_version=library.currentversion,
+                file_name=error_file,
+                error=error,
+                original_code=original_code,
+                references=references
             )    
-
+              
     return prompt_text
 
 

@@ -48,6 +48,121 @@ def extract_error_file_paths(error_log):
 
     return file_paths
 
+
+def extract_error_files_errors(error_log):
+    # """
+    # Extracts and returns a list of dictionaries where the key is the file path
+    # and the value is a list of the errors caused in that file.
+
+    # :param error_log: A string containing the error log.
+    # :return: A dictionaries {file_path: [error_messages]}.
+    # """
+    # # Regular expression to extract the file paths and line numbers
+    # file_path_pattern = r"\[ERROR\] (/.*\.java):\[\d+,\d+\] (.*)"
+    
+    # # Find all matches
+    # matches = re.findall(file_path_pattern, error_log)
+
+    # # Create a dictionary to hold file paths and their associated errors
+    # error_dict = {}
+    
+    # for match in matches:
+    #     file_path, error_message = match
+        
+    #     # If the file path is already in the dictionary, append the new error message
+    #     if file_path in error_dict:
+    #         #check if error message is already in the list
+    #         if error_message not in error_dict[file_path]:
+    #           error_dict[file_path].append(error_message)
+    #     else:
+    #         # Otherwise, create a new entry for this file path
+    #         error_dict[file_path] = [error_message]
+    # return error_dict
+ 
+    """
+    Extracts and returns a list of dictionaries where the key is the file path
+    and the value is a list of the errors caused in that file. Handles multi-line
+    errors and errors without a specific 'error:' prefix.
+
+    :param error_log: A string containing the error log.
+    :return: A list of dictionaries {file_path: [error_messages]}.
+    """
+    # Regular expression to match the error message with file paths
+    file_path_pattern = r"\[ERROR\] (/.*\.java):\[\d+,\d+\] (.*)"
+    
+    # Split the error log into lines
+    log_lines = error_log.splitlines()
+    error_log_lines=get_error_lines(log_lines)
+
+
+    error_dict = {}
+    current_file_path = None
+    current_error_message = []
+    
+
+    for line in error_log_lines:
+        # Check if the line matches the file path pattern
+        match = re.match(file_path_pattern, line)
+        
+        if match:
+            # If we have an ongoing error message, save it before starting a new one
+            if current_file_path and current_error_message:
+                error_dict[current_file_path].append(' '.join(current_error_message))
+                current_error_message = []  # Reset for the next error
+            
+            # Extract file path and error message from the match
+            current_file_path, initial_error_message = match.groups()
+            
+            # Ensure the file path is in the dictionary
+            if current_file_path not in error_dict:
+                error_dict[current_file_path] = []
+            
+            # Start collecting the error message
+            current_error_message.append(initial_error_message)
+        
+        elif line.startswith("[ERROR]") and current_error_message:
+                # This is a continuation of the error message
+                if line.replace("[ERROR]", "").strip() not in current_error_message:
+                   current_error_message.append(line.replace("[ERROR]", "").strip())
+        
+        else:
+            # Non-error lines are part of the error details
+            if current_error_message and not line.strip() in current_error_message:
+                    current_error_message.append(line.strip())
+
+    # Add the last error message to the dictionary if it exists
+    if current_file_path and current_error_message:
+        #check error not already in the list
+        if ' '.join(current_error_message) not in error_dict[current_file_path]:
+            error_dict[current_file_path].append(' '.join(current_error_message))
+    return error_dict
+
+
+def get_error_lines(log_lines):
+    error_lines = []
+    for line in log_lines:
+        if not line.startswith("[INFO]") and not line.startswith("[WARNING]"):
+            error_lines.append(line)
+    return error_lines
+
+def convert_errors_to_string(error_dict):
+    """
+    Converts a list of error messages associated with a file path into a single string.
+
+    :param error_dict: A dictionary where the key is the file path and the value is a list of error messages.
+    :return: A string combining all the errors in the dictionary.
+    """
+    error_strings = []
+    
+    # Iterate through the dictionary
+    for file_path, errors in error_dict.items():
+        # Join all error messages for the current file path into a single string
+        error_string = " ".join(errors)
+        error_strings.append(error_string)
+    
+    # Join all file error strings into a single string with two newlines separating each file's errors
+    return "\n\n".join(error_strings)
+
 # Function to load JSON data
 def load_json_file(file_path):
     with open(file_path, 'r') as json_file:
