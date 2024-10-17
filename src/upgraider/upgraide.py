@@ -14,6 +14,7 @@ from upgraider.Report import (
     FixStatus,
 )
 from utils.util import write_output_to_file
+import time
 
 Import = namedtuple("Import", ["module", "name", "alias"])
 
@@ -48,8 +49,16 @@ class Upgraider:
 
         write_output_to_file(output_dir, "prompt", errorFile, prompt_text)
 
-        model_response = self.model.query(prompt_text)
-
+        inference_not_done = True
+        while inference_not_done:
+            try:
+                model_response = self.model.query(prompt_text)
+                inference_not_done = False
+            except Exception as e:
+                print(f"Waiting 10 minutes")
+                print(f"Error was: {e}")
+                time.sleep(600)
+   
         parsed_model_response = parse_model_response(model_response, code_snippet)
         parsed_model_response.prompt = prompt_text
         parsed_model_response.library = library

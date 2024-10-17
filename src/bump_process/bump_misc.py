@@ -13,13 +13,13 @@ GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
 
 
 def main():
-    option="split_data_with_release"
+    option="find_no_reference_files"
     
    #read csv file for commit id, and number of error files
    #read list of files from folder, if number of error files is less than 5 copy files to specified folder
-    csv_path = '/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/meta/final/bump_metadata_rep.csv'
-    src_folder = '/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/benchmark_split/COMPILATION_FAILURE'
-    dest_folder = '/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/experiment_release'
+    csv_path = '/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/old_prompt/run_release_test_full_release/no_refrence_prompt.txt'
+    src_folder = '/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/old_prompt/run_release_test_full_release/temp'
+    dest_folder = '/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/old_prompt/run_release_test_full_release/no_refrence_prompt'
 
     if option=="split_data":
         max_errors = 5
@@ -27,7 +27,9 @@ def main():
     elif option=="fix_meta_csv_file":
         fix_meta_csv_file(csv_path)   
     elif option=="split_data_with_release":
-        split_data_with_release(csv_path, src_folder, dest_folder)    
+        split_data_with_release(csv_path, src_folder, dest_folder)
+    elif option=="find_no_reference_files":
+        get_files_with_no_reference(src_folder, dest_folder,csv_path)    
   
 
 def process_csv_and_copy_files(csv_path, src_folder, dest_folder, max_errors):
@@ -119,5 +121,30 @@ def fix_meta_csv_file(csv_path):
    # os.replace(temp_file, meta_file)
     print("CSV file updated successfully.")
 
+def get_files_with_no_reference(src_folder, dest_folder,file_path):
+    with open(file_path, mode='w') as csvfile:
+        for dir in os.listdir(src_folder):
+            if(dir==".DS_Store"):
+                continue
+            prompt_dir= os.path.join(src_folder,dir, "prompt")
+            for prompt in os.listdir(prompt_dir):
+                    prompt_path = os.path.join(prompt_dir, prompt)
+                    with open(prompt_path, 'r') as file:
+                        data = file.read()
+                        reference_start = data.find("Provided reference information")  
+                        # Extract the part after the reference information header
+                        end_ref_index = data.find("Your Response")
+                        after_reference = data[reference_start:end_ref_index].lower()
+                        after_reference =after_reference.replace("provided reference information:","")
+                        after_reference=after_reference.strip()
+                        if "no references provided" in after_reference or  after_reference == "none":
+                            csvfile.write(f"{dir}\n")
+                            print(f"File {prompt} has no references")
+                            if not os.path.exists(dest_folder):
+                                os.makedirs(dest_folder)
+                            shutil.copy(prompt_path, dest_folder)    
+                        else:
+                            print(f"File {prompt} has references")                     
+                   
 if __name__ == "__main__":
     main()

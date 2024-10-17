@@ -85,7 +85,7 @@ def create_library_from_json(libinfo, libpath):
     return library
 
 
-def fix_files_with_llm(error_files,error_dict,local_temp_dir,library,db_name,model="gpt-4o-mini", db_source="modelonly", use_references=True, threshold=0.5,use_embedding=False):
+def fix_files_with_llm(logger,error_files,error_dict,local_temp_dir,library,db_name,model="gpt-4o-mini", db_source="modelonly", use_references=True, threshold=0.5,use_embedding=False):
     """
     Fixes the code in files causing errors using LLM and saves the updated code in separate files for comparison.
     """
@@ -129,10 +129,13 @@ def fix_files_with_llm(error_files,error_dict,local_temp_dir,library,db_name,mod
                 f.write(updated_code+'\n')
                 updated_code_map[remote_file_path] = updated_code
             print(f"Updated code written to {updated_file_path}")
-               
+            logger.info(f"Updated code written to {updated_file_path}")   
         except Exception as e:
             print(f"Error while processing {file_path}: {e}")
-        
+            logger.error(f"Error while processing {file_path}: {e}")
+
+    print("----------------------")
+    logger.info("----------------------")    
     return updated_code_map
 
 
@@ -202,7 +205,8 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
             local_temp_dir = os.path.join(local_temp_dir, breaking_data_point)
             os.makedirs(local_temp_dir,exist_ok=True)
            
-
+            print("---------------------")
+            logger.info("---------------------")
             # Retrieve and print the files from the Docker image via SSH
             if breaking_image_name:
                 if not no_download_files:
@@ -210,10 +214,10 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
                     print(f"Files causing issues downloaded to {local_temp_dir}.")
                     
                 # Fix the files causing errors using LLM
-                updated_code_map=fix_files_with_llm(error_files,error_dict,local_temp_dir,library,db_name,model,db_source,use_references,threshold,use_embedding)
+                updated_code_map=fix_files_with_llm(logger,error_files,error_dict,local_temp_dir,library,db_name,model,db_source,use_references,threshold,use_embedding)
                 
-                print("------Rerunning container after fixes-------------")
-                logger.info("---------Rerunning container after fixes ----------")
+                print("------Rerunning build after fixes-------------")
+                logger.info("---------Rerunning build after fixes ----------")
                 # Update the code in the Docker container and rerun the necessary commands check if breaking issue is fixed
                 breaking_output, breaking_error=docker_handler.update_docker_code(updated_code_map,breaking_image_name)
                 breaking_success, breaking_failure_message = check_for_errors(breaking_output, breaking_error)
@@ -239,7 +243,9 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
                                 f.write("%s\n" % item)
                             f.write("-------------------\n")     
                         print("Breaking update build/test failed after fixes. Files causing issues:")
-                        logger.error(f"{os.path.basename(file_path)} - Breaking update build/test failed after fixes. Files causing issues:") 
+                        logger.error("Breaking update build/test failed after fixes. ")
+                        logger.error(f"Post-fix error is : {breaking_failure_message}")
+                        logger.error("Breaking update build/test failed after fixes. Files causing issues:\n") 
                         #print(breaking_failure_message)
                         # logger.error(breaking_failure_message)
                         for error_file in error_files:
