@@ -2,8 +2,9 @@ import os
 import csv
 import shutil
 from utils.github_util import get_url_data,extract_release_notes_from_html
-from utils.util import load_json_file
+from utils.util import load_json_file,setup_logger,get_processed_files
 from dotenv import load_dotenv
+from utils.DockerHandler import DockerHandler
 
 # Load environment variables from .env file
 load_dotenv()
@@ -13,13 +14,13 @@ GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
 
 
 def main():
-    option="find_no_reference_files"
+    option="filter_versioning_error"
     
    #read csv file for commit id, and number of error files
    #read list of files from folder, if number of error files is less than 5 copy files to specified folder
     csv_path = '/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/old_prompt/run_release_test_full_release/no_refrence_prompt.txt'
-    src_folder = '/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/old_prompt/run_release_test_full_release/temp'
-    dest_folder = '/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/old_prompt/run_release_test_full_release/no_refrence_prompt'
+    src_folder = '/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/experiment_norelease'
+    dest_folder = '/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/java_version_error'
 
     if option=="split_data":
         max_errors = 5
@@ -29,7 +30,9 @@ def main():
     elif option=="split_data_with_release":
         split_data_with_release(csv_path, src_folder, dest_folder)
     elif option=="find_no_reference_files":
-        get_files_with_no_reference(src_folder, dest_folder,csv_path)    
+        get_files_with_no_reference(src_folder, dest_folder,csv_path)
+    elif option=="filter_versioning_error":
+        filter_versioning_error(src_folder, dest_folder)    
   
 
 def process_csv_and_copy_files(csv_path, src_folder, dest_folder, max_errors):
@@ -120,6 +123,47 @@ def fix_meta_csv_file(csv_path):
     # Replace the original file with the updated file
    # os.replace(temp_file, meta_file)
     print("CSV file updated successfully.")
+
+def filter_versioning_error(src_folder, dest_folder):
+    ## Load environment variables from .env file
+    load_dotenv()
+
+    # Get SSH details from environment variables
+    hostname = os.getenv('SSH_HOSTNAME')
+    username = os.getenv('SSH_USERNAME')
+    ssh_key_path = os.getenv('SSH_KEY_PATH')
+    ssh_passphrase = os.getenv('SSH_PASSPHRASE')
+
+    # Expand the tilde to the full path
+    ssh_key_path = os.path.expanduser(ssh_key_path)
+
+        
+    logs_folder = os.path.join(dest_folder, "logs")
+    processed_files=get_processed_files(logs_folder)   
+    files_list=os.listdir(src_folder)
+    for filename in files_list:
+        if filename.startswith(".") or  filename.replace('.json', '') in processed_files:
+            print(f"Skipping file: {filename}")
+            continue
+        print("Processing file: ", filename)
+        logger=setup_logger(f"{filename.replace(".json","")}.log",dest_folder)         
+        docker_handler = DockerHandler(hostname, username, ssh_key_path,dest_folder,ssh_passphrase,logger) 
+        json_file_path = os.path.join(src_folder, filename) 
+        data = load_json_file(json_file_path)
+        breaking_command = data.get('breakingUpdateReproductionCommand') 
+        print("Running breaking update...")
+        # Run breaking update Docker command
+        breaking_success, breaking_failure_message=docker_handler.check_breaking(breaking_command)
+        if not breaking_success:
+            print(f"Breaking update failed: {breaking_failure_message}")
+            if "class file has wrong version" in breaking_failure_message:
+                print("Moving file to exclude folder...")
+                dest_file_path = os.path.join(dest_folder, filename)
+                shutil.move(json_file_path, dest_file_path)
+                print(f"File {filename} moved to {dest_folder}")
+        else:
+            print("Breaking update successful.")
+
 
 def get_files_with_no_reference(src_folder, dest_folder,file_path):
     with open(file_path, mode='w') as csvfile:

@@ -49,7 +49,7 @@ def extract_error_file_paths(error_log):
     return file_paths
 
 
-def extract_error_files_errors(error_log):
+def extract_errors(error_log):
     # """
     # Extracts and returns a list of dictionaries where the key is the file path
     # and the value is a list of the errors caused in that file.
@@ -88,7 +88,7 @@ def extract_error_files_errors(error_log):
     :return: A list of dictionaries {file_path: [error_messages]}.
     """
     # Regular expression to match the error message with file paths
-    file_path_pattern = r"\[ERROR\] (/.*\.java):\[\d+,\d+\] (.*)"
+    file_path_pattern = r"\[ERROR\] (/.*\.java):\[(\d+),(\d+)\] (.*)"
     
     # Split the error log into lines
     log_lines = error_log.splitlines()
@@ -101,24 +101,29 @@ def extract_error_files_errors(error_log):
     
 
     for line in error_log_lines:
+        if "-> [Help 1]" in line or "To see the full stack trace of the errors" in line:
+            break
         # Check if the line matches the file path pattern
         match = re.match(file_path_pattern, line)
         
         if match:
             # If we have an ongoing error message, save it before starting a new one
             if current_file_path and current_error_message:
-                error_dict[current_file_path].append(' '.join(current_error_message))
+                message = ' '.join(current_error_message)
+                #check if error message is already in the list
+                if message not in error_dict[current_file_path]:
+                    error_dict[current_file_path].append(message.strip())
                 current_error_message = []  # Reset for the next error
             
             # Extract file path and error message from the match
-            current_file_path, initial_error_message = match.groups()
+            current_file_path, line_number, column_number,initial_error_message = match.groups()
             
             # Ensure the file path is in the dictionary
             if current_file_path not in error_dict:
                 error_dict[current_file_path] = []
             
             # Start collecting the error message
-            current_error_message.append(initial_error_message)
+            current_error_message.append(f"[{line_number},{column_number}]: {initial_error_message}")
         
         elif line.startswith("[ERROR]") and current_error_message:
                 # This is a continuation of the error message
@@ -132,17 +137,23 @@ def extract_error_files_errors(error_log):
 
     # Add the last error message to the dictionary if it exists
     if current_file_path and current_error_message:
-        #check error not already in the list
-        if ' '.join(current_error_message) not in error_dict[current_file_path]:
-            error_dict[current_file_path].append(' '.join(current_error_message))
+                message = ' '.join(current_error_message)
+                #check if error message is already in the list
+                if message not in error_dict[current_file_path]:
+                    error_dict[current_file_path].append(message.strip())
+
     return error_dict
 
 
 def get_error_lines(log_lines):
     error_lines = []
+    error_start=False
     for line in log_lines:
-        if not line.startswith("[INFO]") and not line.startswith("[WARNING]"):
-            error_lines.append(line)
+        if line.startswith("[ERROR]") and not error_start:
+            error_start=True
+        if error_start:
+            if not line.startswith("[INFO]") and not line.startswith("[WARNING]"):
+                error_lines.append(line)
     return error_lines
 
 def convert_errors_to_string(error_dict):
@@ -282,20 +293,21 @@ def get_unfixed_files(pre_fix_errors_files,post_fix_errors_files):
             unfixed_files.append(file)
     return unfixed_files
 
-def get_new_errors(pre_fix_errors_files,post_fix_errors_files):
+def get_new_error_files(pre_fix_errors_files,post_fix_errors_files):
     new_errors = []
     for file in post_fix_errors_files:
         if file not in pre_fix_errors_files:
             new_errors.append(file)
     return new_errors
 
-def write_output_to_file(dir_path,dir,filename,data):
+def write_output_to_file(dir_path,dir,filename,data,mode='w'):
     data_output_dir = os.path.join(dir_path, dir)
     if not os.path.exists(data_output_dir):
         os.makedirs(data_output_dir)
     file_path = os.path.join(data_output_dir, f"{filename}_{dir}.txt")
-    with open(file_path, "w") as f:
+    with open(file_path,mode) as f:
         f.write(data)
+        f.write("\n-------------------------\n")
 
 
 def get_processed_files(logs_output_dir):
@@ -308,3 +320,45 @@ def get_processed_files(logs_output_dir):
                 processed_files.add(log_file.replace('.log', ''))
 
     return processed_files
+
+
+def get_error_count(error_dict):
+    """Get the total number of errors from the error dictionary."""
+    error_count = 0
+    for file_path, errors in error_dict.items():
+        error_count += len(errors)
+    return error_count
+
+
+def get_fixed_errors(pre_fix_errors, post_fix_errors):
+    """Get the errors that were fixed after running the upgrade process."""
+    fixed_errors = []
+    for file_path, pre_fix_errors_list in pre_fix_errors.items():
+        post_fix_errors_list = post_fix_errors.get(file_path, [])
+        for error in pre_fix_errors_list:
+            if error not in post_fix_errors_list:
+                fixed_errors.append(error)
+       # fixed_errors[file_path] = [error for error in pre_fix_errors_list if error not in post_fix_errors_list]
+    return fixed_errors
+
+def get_unfixed_errors(pre_fix_errors, post_fix_errors):
+    """Get the errors that were not fixed after running the upgrade process."""
+    unfixed_errors = []
+    for file_path, pre_fix_errors_list in pre_fix_errors.items():
+        post_fix_errors_list = post_fix_errors.get(file_path, [])
+        for error in pre_fix_errors_list:
+            if error in post_fix_errors_list:
+                unfixed_errors.append(error)
+        #unfixed_errors[file_path] = [error for error in pre_fix_errors_list if error in post_fix_errors_list]
+    return unfixed_errors
+
+def get_new_errors(pre_fix_errors, post_fix_errors):
+    """Get the errors that were newly introduced after running the upgrade process."""
+    new_errors = []
+    for file_path, post_fix_errors_list in post_fix_errors.items():
+        pre_fix_errors_list = pre_fix_errors.get(file_path, [])
+        for error in post_fix_errors_list:
+            if error not in pre_fix_errors_list:
+                new_errors.append(error)
+        #new_errors[file_path] = [error for error in post_fix_errors_list if error not in pre_fix_errors_list]
+    return new_errors

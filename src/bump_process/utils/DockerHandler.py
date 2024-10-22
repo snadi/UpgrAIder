@@ -3,6 +3,7 @@ import paramiko
 import os
 import logging
 import re
+from utils.util import check_for_errors
 
 # DockerHandler class for managing Docker tasks over SSH
 class TimeoutError(Exception):
@@ -18,15 +19,16 @@ class DockerHandler:
         self.ssh_passphrase = ssh_passphrase
         if logger:
             self.logger = logger
+       
+
+
+    def run_docker_command_with_timeout(self,command,timeout):
         try:
             self.ssh_client = self._create_ssh_client()
         except Exception as e:
             print(f"An error occurred while creating SSH client: {e}")
             raise
 
-
-
-    def run_docker_command_with_timeout(self,command,timeout):
         """Run a Docker command with a timeout."""
         result = {"output": None, "error": None, "completed": False}
 
@@ -48,21 +50,33 @@ class DockerHandler:
         if not result["completed"]:
             raise TimeoutError(f"Command '{command}' timed out after {timeout} seconds")
 
+        self.close_connection()
         return result["output"], result["error"]
 
     
     def set_logger(self, logger):
         self.logger = logger
         
-        
+
+    def check_breaking(self,breaking_command):
+        try:
+            self.ssh_client = self._create_ssh_client()
+        except Exception as e:
+            print(f"An error occurred while creating SSH client: {e}")
+            raise       
+        breaking_output, breaking_error = self.run_docker_command(breaking_command)
+        breaking_success, breaking_failure_message = check_for_errors(breaking_output, breaking_error)
+        self.close_connection()
+        return breaking_success, breaking_failure_message
+
     def _create_ssh_client(self):
         """Creates and returns an SSH client."""
-        print("Establishing SSH connection...")
+        #print("Establishing SSH connection...")
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
             ssh.connect(self.hostname, username=self.username, key_filename=self.ssh_key_path, passphrase=self.ssh_passphrase)
-            print("SSH connection established.")
+            #print("SSH connection established.")
             return ssh
         except paramiko.AuthenticationException as auth_error:
             print(f"Authentication failed, please verify your credentials: {auth_error}")
@@ -83,7 +97,6 @@ class DockerHandler:
         error = stderr.read().decode('utf-8')
         # print(f"Command {command} output: {output}")
         # print(f"Command {command} error: {error}")
-
         return output, error
     
     # Function to retrieve files from a Docker image on a remote server via SSH
@@ -96,6 +109,11 @@ class DockerHandler:
         :param file_paths: A list of file paths to retrieve from the Docker image.
         :param local_temp_dir: The local directory to store the files.
         """
+        try:
+            self.ssh_client = self._create_ssh_client()
+        except Exception as e:
+            print(f"An error occurred while creating SSH client: {e}")
+            raise       
         self.logger.error("Reteriving error files form docker container.")
         print("Reteriving error files form docker container.")
         try:
@@ -147,7 +165,7 @@ class DockerHandler:
             # Stop and remove the container
             self.ssh_client.exec_command(f"docker rm -f {container_id}")
             sftp.close()
-
+            self.close_connection()
         except Exception as e:
             self.logger.error(f"An error occurred: {e}")
             print(f"An error occurred: {e}")
@@ -160,6 +178,11 @@ class DockerHandler:
         :param updated_code_map: Dictionary mapping file paths to updated code content.
         :param image_id: ID of the Docker image to start the container from.
         """
+        try:
+            self.ssh_client = self._create_ssh_client()
+        except Exception as e:
+            print(f"An error occurred while creating SSH client: {e}")
+            raise
         try:
             print("Updating code in Docker container...")
             self.logger.info("Updating code in Docker container...")
@@ -201,15 +224,18 @@ class DockerHandler:
                 # Remove the temp file after copying it into the container
                 self.run_docker_command(f'rm {temp_file}')
 
+            print("Attempting a rebuild...")
             # 2. Once files are updated, run the necessary commands in the container
             breaking_command = f"docker exec {container_id} /bin/sh -c 'mvn clean test'"
             breaking_output, breaking_error = self.run_docker_command(breaking_command)
             
-        #TODO uncomment later 
-        # # Stop and remove the container
-        #     self.ssh_client.exec_command(f"docker rm -f {container_id}")
-        #     sftp.close()
-        #     self.logger.info(f"Container {container_id} stopped and removed.")
+       
+        # Stop and remove the container
+            self.ssh_client.exec_command(f"docker rm -f {container_id}")
+            sftp.close()
+            self.logger.info(f"Container {container_id} stopped and removed.")
+            self.close_connection()
+       
         except Exception as e:
             print(f"An error occurred while updating the Docker container: {e}")
             self.logger.error(f"An error occurred while updating the Docker container: {e}")
@@ -219,7 +245,7 @@ class DockerHandler:
         try:
             self.ssh_client.close()
             self.logger.info("SSH connection closed.")
-            print("SSH connection connection closed.")
+            #print("SSH connection connection closed.")
         
         except Exception as e:
             print(f"An error occurred while clossing SSH connection: {e}")

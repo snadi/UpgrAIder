@@ -62,6 +62,8 @@ def construct_fixing_prompt(
     script_dir = os.path.dirname(__file__)
     if use_embeddings:
         template_path=os.path.join(script_dir,"resources/chat_template.txt")
+    elif not use_references:   
+        template_path=os.path.join(script_dir,"resources/bump_chat_template_no_ref.txt") 
     else:
         template_path=os.path.join(script_dir,"resources/bump_chat_template.txt")
     with open(
@@ -72,6 +74,15 @@ def construct_fixing_prompt(
             prompt_text = chat_template.substitute(
                 original_code=original_code, references="".join(references)
             )
+        elif not use_references:
+              prompt_text = chat_template.substitute(
+                library_name=library.name,
+                base_version= library.baseversion,
+                new_version=library.currentversion,
+                file_name=error_file,
+                error=error,
+                original_code=original_code,
+            )       
         else:
             if len(references) == 0:
                 references = "No references provided"
