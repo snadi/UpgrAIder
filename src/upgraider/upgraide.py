@@ -44,7 +44,7 @@ class Upgraider:
             db_name=db_name,
             library=library,
             error_file=errorFile,
-            error="\n\n".join(error)
+            error_str="\n\n".join(error)
         )
 
         write_output_to_file(output_dir, "prompt", errorFile, prompt_text)

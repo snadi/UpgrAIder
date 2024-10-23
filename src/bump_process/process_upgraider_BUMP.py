@@ -16,14 +16,14 @@ from utils.util import extract_error_file_paths, extract_errors
 from utils.util import load_json_file
 from utils.util import select_random_files
 from utils.util import setup_logger
-from utils.util import check_for_errors
+from utils.util import check_for_errors,write_errors_to_file
 from process_release_db import get_library_release_notes
 from utils.util import get_fixed_files, get_unfixed_files, get_new_error_files, get_processed_files,write_output_to_file,get_error_count,get_fixed_errors,get_unfixed_errors,get_new_errors
 
 
 ## Load environment variables from .env file
 load_dotenv()
-debug=True
+debug=False
 
 # Get SSH details from environment variables
 hostname = os.getenv('SSH_HOSTNAME')
@@ -108,8 +108,8 @@ def fix_files_with_llm(logger,error_files,error_dict,local_temp_dir,library,db_n
                     original_code= ''.join(content[1:])
 
             upgraider = Upgraider(model=Model(model))
-            error=error_dict[file_path]
-            write_output_to_file(local_temp_dir, "errors",os.path.basename(file_path), f"Pre-fix-error:\n\n{error}")
+            # error=error_dict[file_path]
+            # write_output_to_file(local_temp_dir, "errors",os.path.basename(file_path), f"Pre-fix-error:\n\n{error}")
             model_response = upgraider.upgraide(
                 code_snippet=CodeSnippet(filename=os.path.basename(remote_file_path),code=original_code),
                 use_references=use_references,
@@ -130,8 +130,9 @@ def fix_files_with_llm(logger,error_files,error_dict,local_temp_dir,library,db_n
                 updated_code = updated_code.strip()
                 if updated_code.startswith("java"):
                     # Remove the Java string from the start of the updated code
-                    updated_code = updated_code[len("java"):]
-                f.write(updated_code+'\n')
+                    updated_code = updated_code[len("java"):] 
+                updated_code = updated_code.strip()    
+                f.write(updated_code)
                 updated_code_map[remote_file_path] = updated_code
             print(f"Updated code written to {updated_file_path}")
             logger.info(f"Updated code written to {updated_file_path}")   
@@ -166,7 +167,7 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
     if breaking_success:
         print(f"{os.path.basename(file_path)} - Breaking update build/test succeeded.")
         logger.info(f"{os.path.basename(file_path)} - Breaking update build/test succeeded.") 
-        return -1,-1,None,None
+        return None,None,None,None
     else:
         pre_fix_error_list = extract_error_file_paths(breaking_failure_message)
         pre_fix_error_dict=extract_errors(breaking_failure_message)
@@ -191,7 +192,7 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
            
             if pre_fix_error_dict:
                 for file in pre_fix_error_list:
-                     write_output_to_file(local_temp_dir, "errors",os.path.basename(file), f"\n\nPre-fix-error:\n\n{pre_fix_error_dict[file]}","w")
+                     write_errors_to_file(local_temp_dir, "errors",os.path.basename(file),"Pre-fix-error:",pre_fix_error_dict[file],"w")
      
             print(f"{os.path.basename(file_path)} - Breaking update build/test failed. Files causing issues:")
             logger.error(f"{os.path.basename(file_path)} - Breaking update build/test failed. Error: {breaking_failure_message}")
@@ -252,7 +253,7 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
                             logger.error(f" - {error_file}")
                     if post_fix_error_dict:
                         for file in post_fix_error_list:
-                            write_output_to_file(local_temp_dir, "errors",os.path.basename(file), f"\n\nPost-fix-error:\n\n{post_fix_error_dict[file]}","a")
+                            write_errors_to_file(local_temp_dir, "errors",os.path.basename(file), "Post-fix-error:",post_fix_error_dict[file],"a")
                 else:
                     print(f"Failed to reprocess {breaking_image_name}.")
                     logger.error(f"Failed to reprocess {breaking_image_name}.")
@@ -331,7 +332,7 @@ def main():
                                 non_fixed_files=get_unfixed_files(pre_fix_errors_files,post_fix_errors_files)
                                 introducted_files=get_new_error_files(pre_fix_errors_files,post_fix_errors_files)
                                
-                                print(f"{filename} before fix error is {len(pre_fix_errors_files)} and after fix error is {len(post_fix_errors_files)}")
+                                print(f"Before fix error number of error files is {len(pre_fix_errors_files)} and after fix number of error files  is {len(post_fix_errors_files)}")
                                 logger.info(f"{filename} before fix error is {len(pre_fix_errors_files)} and after fix error is {len(post_fix_errors_files)}")
                                
                                 #Analyze errors
@@ -339,7 +340,7 @@ def main():
                                 post_fix_errors_count=get_error_count(post_fix_errors) 
                                 fixed_errors=get_fixed_errors(pre_fix_errors,post_fix_errors)
                                 non_fixed_errors=get_unfixed_errors(pre_fix_errors,post_fix_errors)
-                                new_errors=get_new_errors(pre_fix_errors,post_fix_errors)
+                                new_errors=get_new_errors(pre_fix_errors,post_fix_errors,pre_fix_errors_files)
                                
                                 print(f"Pre-fix errors count: {prefix_error_count}\n")
                                 logger.info(f"Pre-fix errors count: {prefix_error_count}\n")

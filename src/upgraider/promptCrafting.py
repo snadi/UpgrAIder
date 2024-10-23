@@ -37,7 +37,7 @@ def construct_fixing_prompt(
     db_name: str = None,
     library: Library = None,
     error_file: str = None,
-    error: str = None,
+    error_str: str = None,
 ):
 
     if use_references is True:
@@ -80,7 +80,7 @@ def construct_fixing_prompt(
                 base_version= library.baseversion,
                 new_version=library.currentversion,
                 file_name=error_file,
-                error=error,
+                error=error_str,
                 original_code=original_code,
             )       
         else:
@@ -91,7 +91,7 @@ def construct_fixing_prompt(
                 base_version= library.baseversion,
                 new_version=library.currentversion,
                 file_name=error_file,
-                error=error,
+                error=error_str,
                 original_code=original_code,
                 references=references
             )    

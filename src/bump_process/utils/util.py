@@ -60,25 +60,7 @@ def extract_errors(error_log):
     # # Regular expression to extract the file paths and line numbers
     # file_path_pattern = r"\[ERROR\] (/.*\.java):\[\d+,\d+\] (.*)"
     
-    # # Find all matches
-    # matches = re.findall(file_path_pattern, error_log)
-
-    # # Create a dictionary to hold file paths and their associated errors
-    # error_dict = {}
     
-    # for match in matches:
-    #     file_path, error_message = match
-        
-    #     # If the file path is already in the dictionary, append the new error message
-    #     if file_path in error_dict:
-    #         #check if error message is already in the list
-    #         if error_message not in error_dict[file_path]:
-    #           error_dict[file_path].append(error_message)
-    #     else:
-    #         # Otherwise, create a new entry for this file path
-    #         error_dict[file_path] = [error_message]
-    # return error_dict
- 
     """
     Extracts and returns a list of dictionaries where the key is the file path
     and the value is a list of the errors caused in that file. Handles multi-line
@@ -103,6 +85,10 @@ def extract_errors(error_log):
     for line in error_log_lines:
         if "-> [Help 1]" in line or "To see the full stack trace of the errors" in line:
             break
+        if "Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin" in line:
+            #trim line starting from "Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin"
+            index = line.find("Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin")
+            line = line[:index]
         # Check if the line matches the file path pattern
         match = re.match(file_path_pattern, line)
         
@@ -128,7 +114,8 @@ def extract_errors(error_log):
         elif line.startswith("[ERROR]") and current_error_message:
                 # This is a continuation of the error message
                 if line.replace("[ERROR]", "").strip() not in current_error_message:
-                   current_error_message.append(line.replace("[ERROR]", "").strip())
+                    if line.replace("[ERROR]", "").strip() != "":
+                        current_error_message.append(line.replace("[ERROR]", "").strip())
         
         else:
             # Non-error lines are part of the error details
@@ -137,7 +124,7 @@ def extract_errors(error_log):
 
     # Add the last error message to the dictionary if it exists
     if current_file_path and current_error_message:
-                message = ' '.join(current_error_message)
+                message = ' '.join(current_error_message).strip()
                 #check if error message is already in the list
                 if message not in error_dict[current_file_path]:
                     error_dict[current_file_path].append(message.strip())
@@ -229,25 +216,27 @@ def setup_logger(logfile_name, output_dir):
     # Create a new logger instance for each log file
     logger = logging.getLogger(logfile_name)  # Use logfile_name to create unique logger
     logger.setLevel(logging.INFO)  # Set the logging level
+    logger.propagate = False
+    logging.getLogger().handlers.clear()
 
-    # Check if the logger already has handlers (to avoid adding duplicate handlers)
-    if not logger.hasHandlers():
-        # Create a file handler for logging to a file
-        file_handler = logging.FileHandler(log_file)
-        file_handler.setLevel(logging.INFO)
+    # # Check if the logger already has handlers (to avoid adding duplicate handlers)
+    # if not logger.hasHandlers():
+    # Create a file handler for logging to a file
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setLevel(logging.INFO)
 
-        # # Create a stream handler for logging to the console
-        # stream_handler = logging.StreamHandler()
-        # stream_handler.setLevel(logging.INFO)
+    # # Create a stream handler for logging to the console
+    # stream_handler = logging.StreamHandler()
+    # stream_handler.setLevel(logging.INFO)
 
-        # Define the formatter and set it for both handlers
-        formatter = logging.Formatter('%(levelname)s - %(message)s')
-        file_handler.setFormatter(formatter)
-        # stream_handler.setFormatter(formatter)
+    # Define the formatter and set it for both handlers
+    formatter = logging.Formatter('%(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    # stream_handler.setFormatter(formatter)
 
-        # Add both handlers to the logger
-        logger.addHandler(file_handler)
-        # logger.addHandler(stream_handler)
+    # Add both handlers to the logger
+    logger.addHandler(file_handler)
+    # logger.addHandler(stream_handler)
 
     return logger
 
@@ -306,8 +295,21 @@ def write_output_to_file(dir_path,dir,filename,data,mode='w'):
         os.makedirs(data_output_dir)
     file_path = os.path.join(data_output_dir, f"{filename}_{dir}.txt")
     with open(file_path,mode) as f:
-        f.write(data)
+       f.write(data)
+       f.write("\n-------------------------\n")
+    
+
+def write_errors_to_file(dir_path,dir,filename,message,error_list,mode="w"):
+    data_output_dir = os.path.join(dir_path, dir)
+    if not os.path.exists(data_output_dir):
+        os.makedirs(data_output_dir)
+    file_path = os.path.join(data_output_dir, f"{filename}_{dir}.txt")
+    with open(file_path,mode) as f:
+        f.write(f"{message}\n\n")
+        for error in error_list:
+            f.write(f"{error}\n\n")
         f.write("\n-------------------------\n")
+
 
 
 def get_processed_files(logs_output_dir):
@@ -352,10 +354,14 @@ def get_unfixed_errors(pre_fix_errors, post_fix_errors):
         #unfixed_errors[file_path] = [error for error in pre_fix_errors_list if error in post_fix_errors_list]
     return unfixed_errors
 
-def get_new_errors(pre_fix_errors, post_fix_errors):
+def get_new_errors(pre_fix_errors, post_fix_errors,pre_fix_files):
     """Get the errors that were newly introduced after running the upgrade process."""
     new_errors = []
     for file_path, post_fix_errors_list in post_fix_errors.items():
+        if file_path not in pre_fix_files:
+            new_file_errors = post_fix_errors.get(file_path, [])
+            for error in new_file_errors:
+                new_errors.append(error)
         pre_fix_errors_list = pre_fix_errors.get(file_path, [])
         for error in post_fix_errors_list:
             if error not in pre_fix_errors_list:

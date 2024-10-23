@@ -72,20 +72,25 @@ class DockerHandler:
     def _create_ssh_client(self):
         """Creates and returns an SSH client."""
         #print("Establishing SSH connection...")
+        self.logger.info("Establishing SSH connection...")
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
             ssh.connect(self.hostname, username=self.username, key_filename=self.ssh_key_path, passphrase=self.ssh_passphrase)
             #print("SSH connection established.")
+            logging.info("SSH connection established.")
             return ssh
         except paramiko.AuthenticationException as auth_error:
             print(f"Authentication failed, please verify your credentials: {auth_error}")
+            logging.error(f"Authentication failed, please verify your credentials: {auth_error}")
             raise  # Re-raise the exception or handle it
         except paramiko.SSHException as ssh_error:
             print(f"Unable to establish SSH connection: {ssh_error}")
+            logging.error(f"Unable to establish SSH connection: {ssh_error}")
             raise  # Re-raise the exception or handle it
         except Exception as e:
             print(f"An error occurred: {e}")
+            logging.error(f"An error occurred: {e}")
             raise  # Catch any other exceptions and re-raise or handle them
 
 
