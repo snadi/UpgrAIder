@@ -362,9 +362,10 @@ def get_new_errors(pre_fix_errors, post_fix_errors,pre_fix_files):
             new_file_errors = post_fix_errors.get(file_path, [])
             for error in new_file_errors:
                 new_errors.append(error)
-        pre_fix_errors_list = pre_fix_errors.get(file_path, [])
-        for error in post_fix_errors_list:
-            if error not in pre_fix_errors_list:
-                new_errors.append(error)
+        else:        
+            pre_fix_errors_list = pre_fix_errors.get(file_path, [])
+            for error in post_fix_errors_list:
+                if error not in pre_fix_errors_list:
+                    new_errors.append(error)
         #new_errors[file_path] = [error for error in post_fix_errors_list if error not in pre_fix_errors_list]
     return new_errors

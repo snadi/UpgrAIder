@@ -195,7 +195,8 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
                      write_errors_to_file(local_temp_dir, "errors",os.path.basename(file),"Pre-fix-error:",pre_fix_error_dict[file],"w")
      
             print(f"{os.path.basename(file_path)} - Breaking update build/test failed. Files causing issues:")
-            logger.error(f"{os.path.basename(file_path)} - Breaking update build/test failed. Error: {breaking_failure_message}")
+            logger.error(f"{os.path.basename(file_path)} - Breaking update build/test failed. Error: \n\n {breaking_failure_message}")
+            logger.error("-------------------")
             logger.error("Files causing issues:")
             for error_file in pre_fix_error_list:
                 print(f" - {error_file}")

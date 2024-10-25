@@ -15,6 +15,7 @@
                 "--json_folder_path","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/debug",
                 "--category","COMPILATION_FAILURE", 
                 "--output_dir","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/debug_error",
+        
                 
                      
             ]
