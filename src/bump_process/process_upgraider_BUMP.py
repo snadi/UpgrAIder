@@ -23,7 +23,7 @@ from utils.util import get_fixed_files, get_unfixed_files, get_new_error_files, 
 
 ## Load environment variables from .env file
 load_dotenv()
-debug=False
+debug=True
 
 # Get SSH details from environment variables
 hostname = os.getenv('SSH_HOSTNAME')
@@ -46,6 +46,7 @@ def parse_arguments():
     parser.add_argument('--use_references', action='store_true', help='If set use references in the LLM model.')
     parser.add_argument('--threshold', type=float, default=0.5, help='Threshold for LLM model.')
     parser.add_argument('--model', type=str, default="gpt-4o-mini", help='Model to use for LLM.')
+    parser.add_argument('--provider',type=str, default="openai", help='Provider for LLM model.')
     parser.add_argument('--db_source', type=str, default="modelonly", help='Data source for LLM.')
     parser.add_argument('--db_name', type=str, help='Databse for release notes.')
     parser.add_argument('--use_embedding', action='store_true', help='If set use embedding to reterive refrences to release notes.')
@@ -86,7 +87,7 @@ def create_library_from_json(libinfo, libpath):
     return library
 
 
-def fix_files_with_llm(logger,error_files,error_dict,local_temp_dir,library,db_name,model="gpt-4o-mini", db_source="modelonly", use_references=True, threshold=0.5,use_embedding=False):
+def fix_files_with_llm(logger,error_files,error_dict,local_temp_dir,library,db_name,model="gpt-4o-mini", provider="openai",db_source="modelonly", use_references=True, threshold=0.5,use_embedding=False):
     """
     Fixes the code in files causing errors using LLM and saves the updated code in separate files for comparison.
     """
@@ -107,7 +108,7 @@ def fix_files_with_llm(logger,error_files,error_dict,local_temp_dir,library,db_n
                     remote_file_path = content[0].strip()
                     original_code= ''.join(content[1:])
 
-            upgraider = Upgraider(model=Model(model))
+            upgraider = Upgraider(model=Model(model,provider))
             # error=error_dict[file_path]
             # write_output_to_file(local_temp_dir, "errors",os.path.basename(file_path), f"Pre-fix-error:\n\n{error}")
             model_response = upgraider.upgraide(
@@ -146,7 +147,7 @@ def fix_files_with_llm(logger,error_files,error_dict,local_temp_dir,library,db_n
 
 
 #Main function to process the JSON files
-def process_json_file(logger,docker_handler, file_path, no_download_files, output_dir,library,model,db_source,use_references,threshold,db_name,use_embedding):
+def process_json_file(logger,docker_handler, file_path, no_download_files, output_dir,library,model,provider,db_source,use_references,threshold,db_name,use_embedding):
     
  
     # Check if the output directory exists, if not, create it
@@ -217,7 +218,7 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
 
                 else:
                     # Fix the files causing errors using LLM
-                    updated_code_map=fix_files_with_llm(logger,pre_fix_error_list,pre_fix_error_dict,local_temp_dir,library,db_name,model,db_source,use_references,threshold,use_embedding)
+                    updated_code_map=fix_files_with_llm(logger,pre_fix_error_list,pre_fix_error_dict,local_temp_dir,library,db_name,model,provider,db_source,use_references,threshold,use_embedding)
                 
                 # print("------Rerunning build after fixes-------------")
                 logger.info("---------Rerunning build after fixes ----------")
@@ -324,7 +325,7 @@ def main():
                             docker_handler.set_logger(logger)
                             library = create_library_from_json(data,"")
                             pre_fix_errors_files,post_fix_errors_files,pre_fix_errors,post_fix_errors=process_json_file(logger,docker_handler, json_file_path,args.no_download_files,args.output_dir,library,
-                                                                       args.model,args.db_source,args.use_references,args.threshold,args.db_name,args.use_embedding)
+                                                                       args.model,args.provider,args.db_source,args.use_references,args.threshold,args.db_name,args.use_embedding)
                            
                             
                             if len(pre_fix_errors_files) > 0 :

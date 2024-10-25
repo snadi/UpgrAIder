@@ -1,5 +1,5 @@
 # some code in this script is based off https://github.com/openai/openai-cookbook/blob/main/examples/Question_answering_using_embeddings.ipynb
-import openai
+from openai import OpenAI
 from os import environ as env
 from dotenv import load_dotenv
 from string import Template
@@ -9,43 +9,105 @@ from upgraider.Report import UpdateStatus, ModelResponse, CodeSnippet
 import requests
 import json
 from upgraider.promptCrafting import construct_fixing_prompt
+from llamaapi import LlamaAPI
+import anthropic
 
 load_dotenv(override=True)
 
 LLM_API_PARAMS = {
     "temperature": 0.0,
+    "MAX_TOKENS": 1024,
 }
 
 
 class Model:
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, provider:str):
+      
         self.model_name = model_name
         # self.api_endpoint = env["OPENAI_API_ENDPOINT"]
         # self.auth_headers = env["OPENAI_AUTH_HEADERS"]
-        self.api_key = env["OPENAI_API_KEY"]
+        self.provider = provider.lower()
+
+        if self.provider == "openai":
+            self.api_key = env["OPENAI_API_KEY"]
+        elif self.provider == "llama":
+            self.api_key = env["LLAMA_API_KEY"]
+        elif self.provider == "claude":
+            self.api_key = env["CLAUDE_API_KEY"]    
+        else:
+            raise ValueError("Invalid provider")
 
     def query(self, query: str) -> str:
+        if self.provider == "openai":
+            return self.query_openai(query)
+        elif self.provider == "llama":
+            return self.query_llama(query)
+        elif self.provider == "claude":
+            return self.query_claude(query)
+        else:
+            raise ValueError("Invalid provider")
+
+    def query_claude(self, query: str) -> str:
+        client = anthropic.Anthropic(
+            api_key=self.api_key,
+        )
+        message = client.messages.create(
+            model=self.model_name,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a smart code reviewer who can spot code that uses a non-existent or deprecated API.",
+                },
+                {"role": "user", "content": query}],
+            max_tokens=LLM_API_PARAMS.get("MAX_TOKENS", 1024)  
+        )   
+
+        response = message.choices[0].text
+        return response.strip()
+    
+
+    def query_llama(self, query: str) -> str:
+        llama=LlamaAPI(self.api_key)
+        api_request_json = {
+                "model": self.model_name,
+                "messages": [
+                {
+                    "role": "system",
+                    "content": "You are a smart code reviewer who can spot code that uses a non-existent or deprecated API.",
+                },
+                {"role": "user", "content": query}],
+                "temperature": LLM_API_PARAMS.get("temperature", 0.0)
+                # "max_tokens": LLM_API_PARAMS.get("MAX_TOKENS", 512)
+            }
+
+        response = llama.run(api_request_json)
+        
+        if response.status_code == 200:
+            result = response.json()['choices'][0]['message']['content']
+            return result.strip()
+        else:
+            raise Exception(f"Error querying LLaMA model: {response.status_code} - {response.text}")
+
+    def query_openai(self, query: str) -> str:
         prompt = [
-            {
-                "role": "system",
-                "content": "You are a smart code reviewer who can spot code that uses a non-existent or deprecated API.",
-            },
-            {"role": "user", "content": query},
-        ]
+                {
+                    "role": "system",
+                    "content": "You are a smart code reviewer who can spot code that uses a non-existent or deprecated API.",
+                },
+                {"role": "user", "content": query},
+            ]
 
-        openai.api_key = self.api_key
+        client = OpenAI(api_key=self.api_key)
+     
 
-        response = openai.ChatCompletion.create(
-            messages=prompt, model=self.model_name, **LLM_API_PARAMS
+        response = client.chat.completions.create(
+            messages=prompt, model=self.model_name, temperature=LLM_API_PARAMS.get("temperature", 0.0)
         )
 
-        result = response["choices"][0]["message"]["content"]
+        result = response.choices[0].message.content
 
         return result
-
-
 # Helper functions to process model response
-
 
 def get_update_status(update_status: str) -> UpdateStatus:
     if update_status == "Update":

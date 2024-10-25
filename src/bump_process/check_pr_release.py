@@ -89,8 +89,6 @@ def get_release_notes_from_html(html_content,json_data,json_file_path,pr_url):
     else:
         return {}
 
-
-
 # Function to write release info to CSV
 def write_to_csv(release_info,output_dir):
     if release_info:

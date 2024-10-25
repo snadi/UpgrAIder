@@ -331,27 +331,50 @@ def get_error_count(error_dict):
         error_count += len(errors)
     return error_count
 
+def get_error_parts(error):
+    error_pattern = r"\[(\d+),(\d+)\]\: (.*)"
+    match = re.match(error_pattern, error)
+    if match:
+        line_number, column_number, error_message = match.groups()
+        return line_number,column_number,error_message
+    else:
+        raise ValueError(f"Error message does not match the expected pattern: {error}") 
 
+def line_within_proximity(line1,line2,proximity=3):
+    return abs(int(line1)-int(line2)) <= proximity
+    
 def get_fixed_errors(pre_fix_errors, post_fix_errors):
     """Get the errors that were fixed after running the upgrade process."""
     fixed_errors = []
+    proximity=3
+    found=False
     for file_path, pre_fix_errors_list in pre_fix_errors.items():
         post_fix_errors_list = post_fix_errors.get(file_path, [])
         for error in pre_fix_errors_list:
-            if error not in post_fix_errors_list:
+            found=False
+            code_line,column,error_message = get_error_parts(error)
+            for post_fix_error in post_fix_errors_list:
+                post_code_line,post_column,post_error_message = get_error_parts(post_fix_error)
+                if line_within_proximity(code_line,post_code_line,proximity) and error_message == post_error_message:
+                    found=True
+                    break
+            if not found:
                 fixed_errors.append(error)
-       # fixed_errors[file_path] = [error for error in pre_fix_errors_list if error not in post_fix_errors_list]
     return fixed_errors
 
 def get_unfixed_errors(pre_fix_errors, post_fix_errors):
     """Get the errors that were not fixed after running the upgrade process."""
     unfixed_errors = []
+    proximity=3
     for file_path, pre_fix_errors_list in pre_fix_errors.items():
         post_fix_errors_list = post_fix_errors.get(file_path, [])
         for error in pre_fix_errors_list:
-            if error in post_fix_errors_list:
-                unfixed_errors.append(error)
-        #unfixed_errors[file_path] = [error for error in pre_fix_errors_list if error in post_fix_errors_list]
+            code_line,column,error_message = get_error_parts(error)
+            for post_fix_error in post_fix_errors_list:
+                post_code_line,post_column,post_error_message = get_error_parts(post_fix_error)
+                if line_within_proximity(code_line,post_code_line,proximity) and error_message == post_error_message:
+                    unfixed_errors.append(error)
+       
     return unfixed_errors
 
 def get_new_errors(pre_fix_errors, post_fix_errors,pre_fix_files):
@@ -362,10 +385,18 @@ def get_new_errors(pre_fix_errors, post_fix_errors,pre_fix_files):
             new_file_errors = post_fix_errors.get(file_path, [])
             for error in new_file_errors:
                 new_errors.append(error)
-        else:        
+        else:  
+            found=False     
+            proximity=3 
             pre_fix_errors_list = pre_fix_errors.get(file_path, [])
             for error in post_fix_errors_list:
-                if error not in pre_fix_errors_list:
-                    new_errors.append(error)
-        #new_errors[file_path] = [error for error in post_fix_errors_list if error not in pre_fix_errors_list]
+                found=False
+                code_line,column,error_message = get_error_parts(error)  
+                for pre_fix_error in pre_fix_errors_list:
+                    pre_code_line,pre_column,pre_error_message = get_error_parts(pre_fix_error)
+                    if line_within_proximity(code_line,pre_code_line,proximity) and error_message == pre_error_message:
+                        found=True
+                        break
+                if not found:
+                    new_errors.append(error)    
     return new_errors
