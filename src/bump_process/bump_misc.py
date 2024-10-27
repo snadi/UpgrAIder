@@ -14,13 +14,13 @@ GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
 
 
 def main():
-    option="filter_versioning_error"
+    option="filter_compile_error_type"
     
    #read csv file for commit id, and number of error files
    #read list of files from folder, if number of error files is less than 5 copy files to specified folder
     csv_path = '/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/old_prompt/run_release_test_full_release/no_refrence_prompt.txt'
-    src_folder = '/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/experiment_norelease'
-    dest_folder = '/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/java_version_error'
+    src_folder = '/Users/mam10532/Documents/GitHub/breaking-good/Explanations'
+    dest_folder = '/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/compile_error_type'
 
     if option=="split_data":
         max_errors = 5
@@ -33,6 +33,8 @@ def main():
         get_files_with_no_reference(src_folder, dest_folder,csv_path)
     elif option=="filter_versioning_error":
         filter_versioning_error(src_folder, dest_folder)    
+    elif option=="filter_compile_error_type":
+        filter_compile_error_type(src_folder,dest_folder)    
   
 
 def process_csv_and_copy_files(csv_path, src_folder, dest_folder, max_errors):
@@ -189,6 +191,64 @@ def get_files_with_no_reference(src_folder, dest_folder,file_path):
                             shutil.copy(prompt_path, dest_folder)    
                         else:
                             print(f"File {prompt} has references")                     
-                   
+
+def filter_compile_error_type(src_folder,dest_folder):
+    direct_compilation_errors = []
+    indirect_compilation_errors = []
+    java_version_errors = []
+   
+    if not os.path.exists(dest_folder):
+        os.makedirs(dest_folder)
+
+    direct_compilation_dest=os.path.join(dest_folder, "direct_compilation_errors")
+    indirect_compilation_dest=os.path.join(dest_folder, "indirect_compilation_errors")
+    java_version_errors_dest=os.path.join(dest_folder, "java_version_errors")
+
+    copy_folder="/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/benchmark_split/COMPILATION_FAILURE"
+    files_list=os.listdir(copy_folder)
+
+    if not os.path.exists(direct_compilation_dest):
+        os.makedirs(direct_compilation_dest)
+    if not os.path.exists(indirect_compilation_dest):
+        os.makedirs(indirect_compilation_dest)
+    if not os.path.exists(java_version_errors_dest):
+        os.makedirs(java_version_errors_dest)
+
+    indirect_compilation_keyword = "Your code depends on indirect dependency"
+    java_version_keywords = [
+        "CI uses **Java 11**", 
+        "The new version of the dependency requires **Java 17**",
+        "The new version of the dependency require a different version of Java"]
+    for filename in os.listdir(src_folder):
+        if filename.endswith('.md'):
+            if filename.replace('.md', '.json') in files_list:
+                print(f"Processing file: {filename.replace('.md', '')}")
+                file_path = os.path.join(src_folder, filename)
+                copy_file_path = os.path.join(copy_folder, filename.replace('.md', '.json'))
+                with open(file_path, 'r', encoding='utf-8') as file:
+                    content = file.read()
+                    if indirect_compilation_keyword in content:
+                        indirect_compilation_errors.append(file_path)
+                        shutil.copy(copy_file_path, indirect_compilation_dest)
+                    elif any(keyword in content for keyword in java_version_keywords):
+                        java_version_errors.append(file_path)
+                        shutil.copy(copy_file_path, java_version_errors_dest)
+                    else:
+                        direct_compilation_errors.append(file_path)
+                        shutil.copy(copy_file_path, direct_compilation_dest)
+            else:
+                print(f"Skipping file: {filename}")  
+    #write list of files in a file
+    with open(os.path.join(dest_folder, "direct_compilation_errors.txt"), 'w') as file:
+        for item in direct_compilation_errors:
+            file.write("%s\n" % item)
+    with open(os.path.join(dest_folder, "indirect_compilation_errors.txt"), 'w') as file:
+        for item in indirect_compilation_errors:
+            file.write("%s\n" % item)
+    with open(os.path.join(dest_folder, "java_version_errors.txt"), 'w') as file:
+        for item in java_version_errors:
+            file.write("%s\n" % item)                                          
+
+
 if __name__ == "__main__":
     main()
