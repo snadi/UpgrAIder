@@ -23,7 +23,7 @@ from utils.util import get_fixed_files, get_unfixed_files, get_new_error_files, 
 
 ## Load environment variables from .env file
 load_dotenv()
-debug=True
+debug=False
 
 # Get SSH details from environment variables
 hostname = os.getenv('SSH_HOSTNAME')
@@ -145,11 +145,35 @@ def fix_files_with_llm(logger,error_files,error_dict,local_temp_dir,library,db_n
     logger.info("----------------------")    
     return updated_code_map
 
+def check_more_runs(pre_fix_error_list,post_fix_error_list):
+    All_fixed=True
+    for pre_fix_error in pre_fix_error_list:
+        if pre_fix_error in post_fix_error_list:
+            All_fixed=False
+    return All_fixed and len(post_fix_error_list)>0       
+
+
+def check_previous_runs(updated_code_map,local_temp_dir,run):
+    if run>1:
+        for file in os.listdir(local_temp_dir):
+            if file.endswith(".java"):
+                with open(os.path.join(local_temp_dir, file), 'r') as f:
+                    content =f.readlines()
+                    remote_file_path = content[0].strip()
+                    if remote_file_path not in updated_code_map:
+                        updated_path=os.path.join(local_temp_dir,"updated")
+                        with open(os.path.join(updated_path, file), 'r') as updated_file:
+                            updated_code = updated_file.read()
+                            updated_code_map[remote_file_path]=updated_code.strip()       
+    return updated_code_map
+                
 
 #Main function to process the JSON files
 def process_json_file(logger,docker_handler, file_path, no_download_files, output_dir,library,model,provider,db_source,use_references,threshold,db_name,use_embedding):
     
- 
+    run =1
+    more_runs=True
+    run_output={}
     # Check if the output directory exists, if not, create it
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -168,7 +192,7 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
     if breaking_success:
         print(f"{os.path.basename(file_path)} - Breaking update build/test succeeded.")
         logger.info(f"{os.path.basename(file_path)} - Breaking update build/test succeeded.") 
-        return None,None,None,None
+        return None
     else:
         pre_fix_error_list = extract_error_file_paths(breaking_failure_message)
         pre_fix_error_dict=extract_errors(breaking_failure_message)
@@ -213,56 +237,75 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
                     docker_handler.get_files_from_docker_via_ssh(breaking_image_name, pre_fix_error_list, local_temp_dir)
                     print(f"Files causing issues downloaded to {local_temp_dir}.")
                 
-                if debug:
-                    updated_code_map=read_updated_code_map(local_temp_dir)
-
-                else:
-                    # Fix the files causing errors using LLM
-                    updated_code_map=fix_files_with_llm(logger,pre_fix_error_list,pre_fix_error_dict,local_temp_dir,library,db_name,model,provider,db_source,use_references,threshold,use_embedding)
+                while more_runs and run <=3:  
+                    if debug:
+                        updated_code_map=read_updated_code_map(local_temp_dir)
+                    else:
+                        # Fix the files causing errors using LLM
+                        updated_code_map=fix_files_with_llm(logger,pre_fix_error_list,pre_fix_error_dict,local_temp_dir,library,db_name,model,provider,db_source,use_references,threshold,use_embedding)
+                    
+                   # print("------Rerunning build after fixes-------------")
+                    logger.info("---------Rerunning build after fixes ----------")
+                    # Update the code in the Docker container and rerun the necessary commands check if breaking issue is fixed
+                    if run>1:
+                        updated_code_map=check_previous_runs(updated_code_map,local_temp_dir,run)
                 
-                # print("------Rerunning build after fixes-------------")
-                logger.info("---------Rerunning build after fixes ----------")
-                # Update the code in the Docker container and rerun the necessary commands check if breaking issue is fixed
-                breaking_output, breaking_error=docker_handler.update_docker_code(updated_code_map,breaking_image_name)
-                breaking_success, breaking_failure_message = check_for_errors(breaking_output, breaking_error)
-             
-                # Report results for breaking update
-                if breaking_success:
-                    print(f"{os.path.basename(error_file)} - Breaking update build/test succeeded after fixes.")
-                    logger.info(f"{os.path.basename(error_file)} - Breaking update build/test succeeded after fixes.")
-                    post_fix_error_list=[]
-                    post_fix_error_dict={}
-                elif breaking_failure_message:
-                    post_fix_error_list=[]
-                    post_fix_error_list = extract_error_file_paths(breaking_failure_message)
-                    post_fix_error_dict=extract_errors(breaking_failure_message)
-                    print("-------------------")
-                    logger.info("-------------------")
-                    if  post_fix_error_list:
-                        with open(file_path_error, 'a') as f:
-                            f.write("Post-fix Error Files:\n")
-                            for item in post_fix_error_list:
-                                f.write("%s\n" % item)
-                            f.write("-------------------\n")     
-                        print("Breaking update build/test failed after fixes. Files causing issues:")
-                        logger.error("Breaking update build/test failed after fixes. ")
-                        logger.error(f"Post-fix error is : {breaking_failure_message}")
-                        logger.error("Breaking update build/test failed after fixes. Files causing issues:\n") 
-                        #print(breaking_failure_message)
-                        # logger.error(breaking_failure_message)
-                        for error_file in post_fix_error_list:
-                            print(f" - {error_file}")
-                            logger.error(f" - {error_file}")
-                    if post_fix_error_dict:
-                        for file in post_fix_error_list:
-                            write_errors_to_file(local_temp_dir, "errors",os.path.basename(file), "Post-fix-error:",post_fix_error_dict[file],"a")
-                else:
-                    print(f"Failed to reprocess {breaking_image_name}.")
-                    logger.error(f"Failed to reprocess {breaking_image_name}.")
-            else:
-                print(f"{os.path.basename(error_file)} - Breaking update build/test failed. No specific files identified.")
-                logger.error(f"Failed to reprocess {breaking_image_name}.")
-    return  pre_fix_error_list, post_fix_error_list,pre_fix_error_dict,post_fix_error_dict
+                    breaking_output, breaking_error=docker_handler.update_docker_code(updated_code_map,breaking_image_name)
+                    breaking_success, breaking_failure_message = check_for_errors(breaking_output, breaking_error)
+                
+                    # Report results for breaking update
+                    if breaking_success:
+                        print(f"{os.path.basename(error_file)} - Breaking update build/test succeeded after fixes.")
+                        logger.info(f"{os.path.basename(error_file)} - Breaking update build/test succeeded after fixes.")
+                        post_fix_error_list=[]
+                        post_fix_error_dict={}
+                    elif breaking_failure_message:
+                        post_fix_error_list=[]
+                        post_fix_error_list = extract_error_file_paths(breaking_failure_message)
+                        post_fix_error_dict=extract_errors(breaking_failure_message)
+                        print("-------------------")
+                        logger.info("-------------------")
+                        if  post_fix_error_list:
+                            with open(file_path_error, 'a') as f:
+                                f.write("Post-fix Error Files:\n")
+                                for item in post_fix_error_list:
+                                    f.write("%s\n" % item)
+                                f.write("-------------------\n")     
+                            print("Breaking update build/test failed after fixes. Files causing issues:")
+                            logger.error("Breaking update build/test failed after fixes. ")
+                            logger.error(breaking_failure_message)
+                            logger.error(f"Post-fix error is : {breaking_failure_message}")
+                            logger.error("Breaking update build/test failed after fixes. Files causing issues:\n") 
+                            #print(breaking_failure_message)  
+                            for error_file in post_fix_error_list:
+                                print(f" - {error_file}")
+                                logger.error(f" - {error_file}")
+                        if post_fix_error_dict:
+                            for file in post_fix_error_list:
+                                write_errors_to_file(local_temp_dir, "errors",os.path.basename(file), f"Run {run} Post-fix-error:",post_fix_error_dict[file],"a")
+                        
+                        run_output[run] = {
+                            "pre_fix_error_list": pre_fix_error_list,
+                            "post_fix_error_list": post_fix_error_list,
+                            "pre_fix_error_dict": pre_fix_error_dict,
+                            "post_fix_error_dict": post_fix_error_dict
+                            }
+                        more_runs=check_more_runs(pre_fix_error_list,post_fix_error_list)  
+                        run+=1
+                        if more_runs:
+                            pre_fix_error_list=post_fix_error_list
+                            pre_fix_error_dict=post_fix_error_dict
+                            print(f"Reprocessing {breaking_image_name} for the {run} attempt.")
+                            logger.info(f"Reprocessing {breaking_image_name} after {run} attempt.")  
+                            docker_handler.get_files_from_docker_via_ssh(breaking_image_name, pre_fix_error_list, local_temp_dir)
+                            print(f"Files causing issues downloaded to {local_temp_dir}.")    
+                    else:
+                        print(f"Failed to reprocess {breaking_image_name}.")
+                        logger.error(f"Failed to reprocess {breaking_image_name}.")
+        else:
+            print(f"{os.path.basename(error_file)} - Breaking update build/test failed. No specific files identified.")
+            logger.error(f"Failed to reprocess {breaking_image_name}.")
+    return  run_output
 
 def read_updated_code_map(local_temp_dir):
     updated_code_map={}
@@ -318,47 +361,56 @@ def main():
                             continue
                         json_file_path = os.path.join(args.json_folder_path, filename) 
                         data = load_json_file(json_file_path)
+                       
                         if data.get('failureCategory') == args.category:
-                            print("\n")
+                            print("\n")  
                             print(f"Processing {filename}...")
                             logger=setup_logger(f"{filename.replace(".json","")}.log",args.output_dir)
                             docker_handler.set_logger(logger)
                             library = create_library_from_json(data,"")
-                            pre_fix_errors_files,post_fix_errors_files,pre_fix_errors,post_fix_errors=process_json_file(logger,docker_handler, json_file_path,args.no_download_files,args.output_dir,library,
+                            run_output=process_json_file(logger,docker_handler, json_file_path,args.no_download_files,args.output_dir,library,
                                                                        args.model,args.provider,args.db_source,args.use_references,args.threshold,args.db_name,args.use_embedding)
                            
-                            
-                            if len(pre_fix_errors_files) > 0 :
-                                #Analyze error files
-                                fixed_files=get_fixed_files(pre_fix_errors_files,post_fix_errors_files)
-                                non_fixed_files=get_unfixed_files(pre_fix_errors_files,post_fix_errors_files)
-                                introducted_files=get_new_error_files(pre_fix_errors_files,post_fix_errors_files)
-                               
-                                print(f"Before fix error number of error files is {len(pre_fix_errors_files)} and after fix number of error files  is {len(post_fix_errors_files)}")
-                                logger.info(f"{filename} before fix error is {len(pre_fix_errors_files)} and after fix error is {len(post_fix_errors_files)}")
-                               
-                                #Analyze errors
-                                prefix_error_count=get_error_count(pre_fix_errors)
-                                post_fix_errors_count=get_error_count(post_fix_errors) 
-                                fixed_errors=get_fixed_errors(pre_fix_errors,post_fix_errors)
-                                non_fixed_errors=get_unfixed_errors(pre_fix_errors,post_fix_errors)
-                                new_errors=get_new_errors(pre_fix_errors,post_fix_errors,pre_fix_errors_files)
-                               
-                                print(f"Pre-fix errors count: {prefix_error_count}\n")
-                                logger.info(f"Pre-fix errors count: {prefix_error_count}\n")
-                                print(f"Post-fix errors count: {post_fix_errors_count}\n")
-                                logger.info(f"Post-fix errors count: {post_fix_errors_count}\n")
-                                print(f"Fixed errors: {len(fixed_errors)}\n")
-                                logger.info(f"Fixed errors: {len(fixed_errors)}\n")
-                                print(f"Unfixed errors: {len(non_fixed_errors)}\n")
-                                logger.info(f"Unfixed errors: {len(non_fixed_errors)}\n")
-                                print(f"New errors: {len(new_errors)}\n")
-                                logger.info(f"New errors: {len(new_errors)}\n")
-                                print("-------------------\n")
-                                f.write(f"{filename},{len(pre_fix_errors_files)},{len(post_fix_errors_files)},{len(fixed_files)},{len(non_fixed_files)},{len(introducted_files)},{prefix_error_count},{post_fix_errors_count},{len(fixed_errors)},{len(non_fixed_errors)},{len(new_errors)}\n")
-                            else:
-                                print("Issue with reproduciability, breaking commit is not failing")   
-                                logger.error("Issue with reproduciability, breaking commit is not failing") 
+                            for run_index, run_data in run_output.items():
+                                pre_fix_errors_files = run_data["pre_fix_error_list"]
+                                post_fix_errors_files = run_data["post_fix_error_list"]
+                                pre_fix_errors = run_data["pre_fix_error_dict"]
+                                post_fix_errors = run_data["post_fix_error_dict"]
+                                if len(pre_fix_errors_files) > 0 :
+                                    #Analyze error files
+                                    fixed_files=get_fixed_files(pre_fix_errors_files,post_fix_errors_files)
+                                    non_fixed_files=get_unfixed_files(pre_fix_errors_files,post_fix_errors_files)
+                                    introducted_files=get_new_error_files(pre_fix_errors_files,post_fix_errors_files)
+                                
+                                    print(f"Before fix error number of error files is {len(pre_fix_errors_files)} and after fix number of error files  is {len(post_fix_errors_files)}")
+                                    logger.info(f"{filename} before fix error is {len(pre_fix_errors_files)} and after fix error is {len(post_fix_errors_files)}")
+                                
+                                    #Analyze errors
+                                    prefix_error_count=get_error_count(pre_fix_errors)
+                                    post_fix_errors_count=get_error_count(post_fix_errors) 
+                                    fixed_errors=get_fixed_errors(pre_fix_errors,post_fix_errors)
+                                    non_fixed_errors=get_unfixed_errors(pre_fix_errors,post_fix_errors)
+                                    new_errors=get_new_errors(pre_fix_errors,post_fix_errors,pre_fix_errors_files)
+                                
+                                    print(f"Pre-fix errors count: {prefix_error_count}\n")
+                                    logger.info(f"Pre-fix errors count: {prefix_error_count}\n")
+                                    print(f"Post-fix errors count: {post_fix_errors_count}\n")
+                                    logger.info(f"Post-fix errors count: {post_fix_errors_count}\n")
+                                    print(f"Fixed errors: {len(fixed_errors)}\n")
+                                    logger.info(f"Fixed errors: {len(fixed_errors)}\n")
+                                    print(f"Unfixed errors: {len(non_fixed_errors)}\n")
+                                    logger.info(f"Unfixed errors: {len(non_fixed_errors)}\n")
+                                    print(f"New errors: {len(new_errors)}\n")
+                                    logger.info(f"New errors: {len(new_errors)}\n")
+                                    print("-------------------\n")
+
+                                    if len(run_output)>1:
+                                        f.write(f"{filename}_{run_index},{len(pre_fix_errors_files)},{len(post_fix_errors_files)},{len(fixed_files)},{len(non_fixed_files)},{len(introducted_files)},{prefix_error_count},{post_fix_errors_count},{len(fixed_errors)},{len(non_fixed_errors)},{len(new_errors)}\n")
+                                    else:
+                                        f.write(f"{filename},{len(pre_fix_errors_files)},{len(post_fix_errors_files)},{len(fixed_files)},{len(non_fixed_files)},{len(introducted_files)},{prefix_error_count},{post_fix_errors_count},{len(fixed_errors)},{len(non_fixed_errors)},{len(new_errors)}\n")                   
+                                else:
+                                    print("Issue with reproduciability, breaking commit is not failing")   
+                                    logger.error("Issue with reproduciability, breaking commit is not failing") 
                         else:
                             print(f"{filename} does not match the failure category '{args.category}' and will not be processed.")
                         print(f"Processed {filename}.")    
