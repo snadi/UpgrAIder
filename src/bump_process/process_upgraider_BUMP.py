@@ -23,7 +23,7 @@ from utils.util import get_fixed_files, get_unfixed_files, get_new_error_files, 
 
 ## Load environment variables from .env file
 load_dotenv()
-debug=False
+
 
 # Get SSH details from environment variables
 hostname = os.getenv('SSH_HOSTNAME')
@@ -50,6 +50,7 @@ def parse_arguments():
     parser.add_argument('--db_source', type=str, default="modelonly", help='Data source for LLM.')
     parser.add_argument('--db_name', type=str, help='Databse for release notes.')
     parser.add_argument('--use_embedding', action='store_true', help='If set use embedding to reterive refrences to release notes.')
+    parser.add_argument('--debug', action='store_true', help='If set use the updated code map to reprocess the files.')
    
     return parser.parse_args()
 
@@ -169,7 +170,7 @@ def check_previous_runs(updated_code_map,local_temp_dir,run):
                 
 
 #Main function to process the JSON files
-def process_json_file(logger,docker_handler, file_path, no_download_files, output_dir,library,model,provider,db_source,use_references,threshold,db_name,use_embedding):
+def process_json_file(logger,docker_handler, file_path, no_download_files, output_dir,library,model,provider,db_source,use_references,threshold,db_name,use_embedding,debug=False):
     
     run =1
     more_runs=True
@@ -259,6 +260,8 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
                         logger.info(f"{os.path.basename(error_file)} - Breaking update build/test succeeded after fixes.")
                         post_fix_error_list=[]
                         post_fix_error_dict={}
+                        run+=1
+                        more_runs=False
                     elif breaking_failure_message:
                         post_fix_error_list=[]
                         post_fix_error_list = extract_error_file_paths(breaking_failure_message)
@@ -326,6 +329,10 @@ def main():
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
     new_run=False    
+    if args.debug:
+      debug=True
+    else:
+      debug=False  
     if  not os.path.exists(os.path.join(args.output_dir, "run_data.csv")):
         new_run=True;    
     with open(os.path.join(args.output_dir, "run_data.csv"), 'a') as f:
@@ -340,7 +347,7 @@ def main():
                 if os.path.exists(specific_file_path):
                     library = create_library_from_json(load_json_file(specific_file_path),"")
                     pre_fix_num,post_fix_num=process_json_file(logger,docker_handler, specific_file_path,args.no_download_files,args.output_dir,library,
-                                                               args.model,args.db_source,args.use_references,args.threshold)
+                                                               args.model,args.db_source,args.use_references,args.threshold,debug)
                     f.write(f"{args.specific_file},{pre_fix_num},{post_fix_num}\n")
                 else:
                     print(f"Specified file {args.specific_file} does not exist in {args.json_folder_path}.")
@@ -369,7 +376,7 @@ def main():
                             docker_handler.set_logger(logger)
                             library = create_library_from_json(data,"")
                             run_output=process_json_file(logger,docker_handler, json_file_path,args.no_download_files,args.output_dir,library,
-                                                                       args.model,args.provider,args.db_source,args.use_references,args.threshold,args.db_name,args.use_embedding)
+                                                                       args.model,args.provider,args.db_source,args.use_references,args.threshold,args.db_name,args.use_embedding,debug)
                            
                             for run_index, run_data in run_output.items():
                                 pre_fix_errors_files = run_data["pre_fix_error_list"]

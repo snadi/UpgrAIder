@@ -355,7 +355,7 @@ def get_fixed_errors(pre_fix_errors, post_fix_errors):
             code_line,column,error_message = get_error_parts(error)
             for post_fix_error in post_fix_errors_list:
                 post_code_line,post_column,post_error_message = get_error_parts(post_fix_error)
-                if line_within_proximity(code_line,post_code_line,proximity) and error_message == post_error_message:
+                if line_within_proximity(code_line,post_code_line,proximity) and error_message == post_error_message and error not in fixed_errors:
                     found=True
                     break
             if not found:
@@ -372,7 +372,7 @@ def get_unfixed_errors(pre_fix_errors, post_fix_errors):
             code_line,column,error_message = get_error_parts(error)
             for post_fix_error in post_fix_errors_list:
                 post_code_line,post_column,post_error_message = get_error_parts(post_fix_error)
-                if line_within_proximity(code_line,post_code_line,proximity) and error_message == post_error_message:
+                if line_within_proximity(code_line,post_code_line,proximity) and error_message == post_error_message and error not in unfixed_errors:
                     unfixed_errors.append(error)
        
     return unfixed_errors
@@ -394,7 +394,7 @@ def get_new_errors(pre_fix_errors, post_fix_errors,pre_fix_files):
                 code_line,column,error_message = get_error_parts(error)  
                 for pre_fix_error in pre_fix_errors_list:
                     pre_code_line,pre_column,pre_error_message = get_error_parts(pre_fix_error)
-                    if line_within_proximity(code_line,pre_code_line,proximity) and error_message == pre_error_message:
+                    if line_within_proximity(code_line,pre_code_line,proximity) and error_message == pre_error_message and error not in new_errors:
                         found=True
                         break
                 if not found:
