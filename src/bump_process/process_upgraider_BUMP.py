@@ -374,6 +374,7 @@ def main():
     with open(os.path.join(args.output_dir, "run_data.csv"), 'a') as f:
         if new_run:
             f.write("CommitID,Prefix_Files,Postfix_Files,Fixed_Files, Unfixed_Files, New_Errors_Files, Prefix_Errors, Postfix_Errors, Fixed_Errors,Unfixed_Errors,New_Errors \n")
+            f.flush()  
         # Process a specific file if provided
         try:      
             if args.specific_file:
@@ -450,8 +451,10 @@ def main():
 
                                     if len(run_output)>1:
                                         f.write(f"{filename}_{run_index},{len(pre_fix_errors_files)},{len(post_fix_errors_files)},{len(fixed_files)},{len(non_fixed_files)},{len(introducted_files)},{prefix_error_count},{post_fix_errors_count},{len(fixed_errors)},{len(non_fixed_errors)},{len(new_errors)}\n")
+                                        f.flush()  
                                     else:
-                                        f.write(f"{filename},{len(pre_fix_errors_files)},{len(post_fix_errors_files)},{len(fixed_files)},{len(non_fixed_files)},{len(introducted_files)},{prefix_error_count},{post_fix_errors_count},{len(fixed_errors)},{len(non_fixed_errors)},{len(new_errors)}\n")                   
+                                        f.write(f"{filename},{len(pre_fix_errors_files)},{len(post_fix_errors_files)},{len(fixed_files)},{len(non_fixed_files)},{len(introducted_files)},{prefix_error_count},{post_fix_errors_count},{len(fixed_errors)},{len(non_fixed_errors)},{len(new_errors)}\n")  
+                                        f.flush()                   
                                 else:
                                     print("Issue with reproduciability, breaking commit is not failing")   
                                     logger.error("Issue with reproduciability, breaking commit is not failing") 
