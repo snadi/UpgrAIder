@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+        
 
         {
             "name": "Python Debugger: Current File with Arguments",
@@ -14,14 +15,10 @@
             "args": [
                 "--json_folder_path","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/debug",
                 "--category","COMPILATION_FAILURE", 
-                "--output_dir","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/debug_error_count",
+                "--output_dir","/Users/mam10532/Documents/GitHub/UpgrAIder/bump_output/debug_mode",
                 "--model","gpt-4o-mini",
-                "--provider","openai",
-                "--no_download_files",
-                "--debug"        
+                "--provider","openai",  
             ]
         }
     ]
 }
-
-

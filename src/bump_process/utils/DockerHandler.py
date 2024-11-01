@@ -4,12 +4,14 @@ import os
 import logging
 import re
 from utils.util import check_for_errors
+import subprocess
+import shutil
 
 # DockerHandler class for managing Docker tasks over SSH
 class TimeoutError(Exception):
     pass
 class DockerHandler:
-    def __init__(self, hostname, username, ssh_key_path, output_dir, ssh_passphrase=None, logger=None):
+    def __init__(self, hostname, username, ssh_key_path, output_dir, ssh_passphrase=None,mode="ssh",logger=None):
         if not all([hostname, username, ssh_key_path]):
             raise ValueError("SSH_HOSTNAME, SSH_USERNAME, and SSH_KEY_PATH must be set in the environment.")
         
@@ -17,6 +19,7 @@ class DockerHandler:
         self.username = username
         self.ssh_key_path = ssh_key_path
         self.ssh_passphrase = ssh_passphrase
+        self.mode=mode
         if logger:
             self.logger = logger
        
@@ -59,14 +62,17 @@ class DockerHandler:
         
 
     def check_breaking(self,breaking_command):
-        try:
-            self.ssh_client = self._create_ssh_client()
-        except Exception as e:
-            print(f"An error occurred while creating SSH client: {e}")
-            raise       
+        if self.mode=="ssh":
+            try:
+                self.ssh_client = self._create_ssh_client()
+            except Exception as e:
+                print(f"An error occurred while creating SSH client: {e}")
+                raise       
         breaking_output, breaking_error = self.run_docker_command(breaking_command)
         breaking_success, breaking_failure_message = check_for_errors(breaking_output, breaking_error)
-        self.close_connection()
+
+        if self.mode=="ssh":
+         self.close_connection()
         return breaking_success, breaking_failure_message
 
     def _create_ssh_client(self):
@@ -95,11 +101,17 @@ class DockerHandler:
 
 
     def run_docker_command(self, command):
-        """Runs a Docker command on the remote server and returns output and error."""
+        """Runs a Docker command on the server and returns output and error."""
         # print(f"Running command: {command}")
-        stdin, stdout, stderr = self.ssh_client.exec_command(command)
-        output = stdout.read().decode('utf-8')
-        error = stderr.read().decode('utf-8')
+        if self.mode=="ssh":
+            stdin, stdout, stderr = self.ssh_client.exec_command(command)
+            output = stdout.read().decode('utf-8')
+            error = stderr.read().decode('utf-8')
+        else:
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            output, error = process.communicate()
+            output = output.decode('utf-8')
+            error = error.decode('utf-8')    
         # print(f"Command {command} output: {output}")
         # print(f"Command {command} error: {error}")
         return output, error
@@ -114,41 +126,49 @@ class DockerHandler:
         :param file_paths: A list of file paths to retrieve from the Docker image.
         :param local_temp_dir: The local directory to store the files.
         """
-        try:
-            self.ssh_client = self._create_ssh_client()
-        except Exception as e:
-            print(f"An error occurred while creating SSH client: {e}")
-            raise       
+        if self.mode=="ssh":
+            try:
+                self.ssh_client = self._create_ssh_client()
+            except Exception as e:
+                print(f"An error occurred while creating SSH client: {e}")
+                raise       
         self.logger.error("Reteriving error files form docker container.")
         print("Reteriving error files form docker container.")
         try:
             # Create a temporary container from the image and keep it running
-            stdin, stdout, stderr = self.ssh_client.exec_command(f"docker create -it {image_name} /bin/sh")
-            container_id = stdout.read().decode('utf-8').strip()
+            output, error= self.run_docker_command(f"docker create -it {image_name} /bin/sh")
+            #stdin, stdout, stderr = self.ssh_client.exec_command(f"docker create -it {image_name} /bin/sh")
+            #container_id = stdout.read().decode('utf-8').strip()
+            container_id=output.strip()
 
             if not container_id:
                 self.logger.error("Failed to create a Docker container.")
                 print("Failed to create a Docker container.")
                 return
-
-            self.ssh_client.exec_command(f"docker start {container_id}")
-
-            sftp = self.ssh_client.open_sftp()
+            self.run_docker_command(f"docker start {container_id}")    
+            #self.ssh_client.exec_command(f"docker start {container_id}")
+            
+            if self.mode=="ssh":
+                sftp = self.ssh_client.open_sftp()   
 
             for file_path in file_paths:
                 try:
                     
                     # Copy the file from the container to a temporary location on the remote server
                     remote_temp_path = f"/tmp/{os.path.basename(file_path)}.tar"
-                    self.ssh_client.exec_command(f"docker cp {container_id}:{file_path} {remote_temp_path}")
+                    self.run_docker_command(f"docker cp {container_id}:{file_path} {remote_temp_path}")
+                    #self.ssh_client.exec_command(f"docker cp {container_id}:{file_path} {remote_temp_path}")
 
                     # Define the local path where the file will be stored
                     local_file_path = os.path.join(local_temp_dir, os.path.basename(file_path))
                     
+                    if self.mode=="ssh":
                     # Download the file from the remote server to the local machine
-                    sftp.get(remote_temp_path, local_file_path)
+                        sftp.get(remote_temp_path, local_file_path)
+                    else:
+                         if os.path.isfile(remote_temp_path):  # Check if it's a file
+                            shutil.copy(remote_temp_path, local_file_path)    
 
-                    
                     with open(local_file_path, 'r') as file:
                         content = file.readlines()
                         content.insert(0, file_path + '\n')
@@ -159,7 +179,8 @@ class DockerHandler:
                         print(f"{file_path} Downloaded.\n")
 
                     # Clean up the temporary files
-                    self.ssh_client.exec_command(f"rm -f {remote_temp_path}")
+                    self.run_docker_command(f"rm -f {remote_temp_path}")
+                    #self.ssh_client.exec_command(f"rm -f {remote_temp_path}")
                     
 
                 except Exception as e:
@@ -168,9 +189,12 @@ class DockerHandler:
 
             print("-----------------")
             # Stop and remove the container
-            self.ssh_client.exec_command(f"docker rm -f {container_id}")
-            sftp.close()
-            self.close_connection()
+            self.run_docker_command(f"docker rm -f {container_id}")
+            #self.ssh_client.exec_command(f"docker rm -f {container_id}")
+            if self.mode=="ssh":
+                sftp.close()
+                self.close_connection()
+            
         except Exception as e:
             self.logger.error(f"An error occurred: {e}")
             print(f"An error occurred: {e}")
@@ -183,11 +207,12 @@ class DockerHandler:
         :param updated_code_map: Dictionary mapping file paths to updated code content.
         :param image_id: ID of the Docker image to start the container from.
         """
-        try:
-            self.ssh_client = self._create_ssh_client()
-        except Exception as e:
-            print(f"An error occurred while creating SSH client: {e}")
-            raise
+        if self.mode=="ssh":
+            try:
+                self.ssh_client = self._create_ssh_client()
+            except Exception as e:
+                print(f"An error occurred while creating SSH client: {e}")
+                raise
         try:
             print("Updating code in Docker container...")
             self.logger.info("Updating code in Docker container...")
@@ -210,10 +235,14 @@ class DockerHandler:
                 # Create a temporary file with the updated content
                 temp_file = '/tmp/'+os.path.basename(file_name)
                 
-                # Write the updated code to the temp file on the remote host
-                with self.ssh_client.open_sftp() as sftp:
-                    with sftp.file(temp_file, 'w') as temp_file_handle:
-                        temp_file_handle.write(updated_code)
+                if self.mode=="ssh":
+                    # Write the updated code to the temp file on the remote host
+                    with self.ssh_client.open_sftp() as sftp:
+                        with sftp.file(temp_file, 'w') as temp_file_handle:
+                            temp_file_handle.write(updated_code)
+                else:
+                     with open(temp_file, 'w') as temp_file_handle:
+                             temp_file_handle.write(updated_code)            
 
                 # Copy the temp file into the container
                 copy_cmd = f"docker cp {temp_file} {container_id}:{file_name}"
@@ -236,10 +265,12 @@ class DockerHandler:
             
        
         # Stop and remove the container
-            self.ssh_client.exec_command(f"docker rm -f {container_id}")
-            sftp.close()
+            self.run_docker_command(f"docker rm -f {container_id}")
+            #self.ssh_client.exec_command(f"docker rm -f {container_id}")
             self.logger.info(f"Container {container_id} stopped and removed.")
-            self.close_connection()
+            if self.mode=="ssh":
+                sftp.close()           
+                self.close_connection()
        
         except Exception as e:
             print(f"An error occurred while updating the Docker container: {e}")

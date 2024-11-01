@@ -34,8 +34,20 @@ def main():
     elif option=="filter_versioning_error":
         filter_versioning_error(src_folder, dest_folder)    
     elif option=="filter_compile_error_type":
-        filter_compile_error_type(src_folder,dest_folder)    
+        filter_compile_error_type(src_folder,dest_folder)
+    elif option=="get_compile_error_data":
+        get_compile_error_data(src_folder,dest_folder)        
   
+def get_compile_error_data(src_folder,dest_folder):
+    output_file=os.path.join(dest_folder, "final_set_meta.csv")
+    with open(output_file, mode='w') as metadata_file:
+        for filename in os.listdir(src_folder):
+            if filename.endswith('.json'):
+                print(f"Processing file: {filename}")
+                file_path = os.path.join(src_folder, filename)
+                data = load_json_file(file_path)
+                metadata_file.write(os.path.basename(file_path)+","+data.get('url')+","+data['updatedDependency']['dependencyGroupID']+","+data['updatedDependency']['previousVersion']+","+data['updatedDependency']['newVersion']+"\n")
+   
 
 def process_csv_and_copy_files(csv_path, src_folder, dest_folder, max_errors):
     try:
@@ -193,9 +205,11 @@ def get_files_with_no_reference(src_folder, dest_folder,file_path):
                             print(f"File {prompt} has references")                     
 
 def filter_compile_error_type(src_folder,dest_folder):
+    print("Processing files for compile type error....\n")
     direct_compilation_errors = []
     indirect_compilation_errors = []
     java_version_errors = []
+    uncalssified_erros=[]
    
     if not os.path.exists(dest_folder):
         os.makedirs(dest_folder)
@@ -203,6 +217,7 @@ def filter_compile_error_type(src_folder,dest_folder):
     direct_compilation_dest=os.path.join(dest_folder, "direct_compilation_errors")
     indirect_compilation_dest=os.path.join(dest_folder, "indirect_compilation_errors")
     java_version_errors_dest=os.path.join(dest_folder, "java_version_errors")
+    unclassified_dest=os.path.join(dest_folder,"unclassified_errors")
 
     copy_folder="/Users/mam10532/Documents/GitHub/UpgrAIder/bump_data/benchmark_split/COMPILATION_FAILURE"
     files_list=os.listdir(copy_folder)
@@ -213,6 +228,8 @@ def filter_compile_error_type(src_folder,dest_folder):
         os.makedirs(indirect_compilation_dest)
     if not os.path.exists(java_version_errors_dest):
         os.makedirs(java_version_errors_dest)
+    if not os.path.exists(unclassified_dest):
+        os.makedirs(unclassified_dest)
 
     indirect_compilation_keyword = "Your code depends on indirect dependency"
     java_version_keywords = [
@@ -238,7 +255,14 @@ def filter_compile_error_type(src_folder,dest_folder):
                         shutil.copy(copy_file_path, direct_compilation_dest)
             else:
                 print(f"Skipping file: {filename}")  
-    #write list of files in a file
+
+    classified_files = set(os.listdir(src_folder))
+    for file in os.listdir(copy_folder):
+        if file.replace(".json", ".md") not in classified_files:
+            uncalssified_erros.append(file)
+            shutil.copy(os.path.join(copy_folder, file), unclassified_dest)
+    
+    # Write list of files in a file
     with open(os.path.join(dest_folder, "direct_compilation_errors.txt"), 'w') as file:
         for item in direct_compilation_errors:
             file.write("%s\n" % item)
@@ -247,7 +271,10 @@ def filter_compile_error_type(src_folder,dest_folder):
             file.write("%s\n" % item)
     with open(os.path.join(dest_folder, "java_version_errors.txt"), 'w') as file:
         for item in java_version_errors:
-            file.write("%s\n" % item)                                          
+            file.write("%s\n" % item) 
+    with open(os.path.join(dest_folder, "unclassified_errors.txt"), 'w') as file:
+        for item in uncalssified_erros:
+            file.write("%s\n" % item)              
 
 
 if __name__ == "__main__":

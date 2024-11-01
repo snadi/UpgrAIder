@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import csv
 import argparse
 from dotenv import load_dotenv
 from utils.DockerHandler import DockerHandler
@@ -11,6 +12,7 @@ from apiexploration.Library import CodeSnippet, Library
 from upgraider.Model import Model
 import logging
 import random
+import shutil
 from pathlib import Path
 from utils.util import extract_error_file_paths, extract_errors
 from utils.util import load_json_file
@@ -43,14 +45,15 @@ def parse_arguments():
     parser.add_argument('--no_download_files',action='store_true', help='If set do not download files causing issues from the Docker image.')
     parser.add_argument('--output_dir', required=True, type=str, help='Folder path for output folder.')
     parser.add_argument('--limit_files', type=int, help='If set then process specificed number of files, selected randomly.')
-    parser.add_argument('--use_references', action='store_true', help='If set use references in the LLM model.')
+    parser.add_argument('--use_references', action='store_true', help='If set use release notes references in the prompt.')
     parser.add_argument('--threshold', type=float, default=0.5, help='Threshold for LLM model.')
     parser.add_argument('--model', type=str, default="gpt-4o-mini", help='Model to use for LLM.')
     parser.add_argument('--provider',type=str, default="openai", help='Provider for LLM model.')
     parser.add_argument('--db_source', type=str, default="modelonly", help='Data source for LLM.')
     parser.add_argument('--db_name', type=str, help='Databse for release notes.')
     parser.add_argument('--use_embedding', action='store_true', help='If set use embedding to reterive refrences to release notes.')
-    parser.add_argument('--debug', action='store_true', help='If set use the updated code map to reprocess the files.')
+    parser.add_argument('--debug', action='store_true', help='If set use the stored files to debug code.')
+    parser.add_argument('--docker_mode', type=str, default="ssh", help='Mode to use for Docker commands.')
    
     return parser.parse_args()
 
@@ -262,6 +265,12 @@ def process_json_file(logger,docker_handler, file_path, no_download_files, outpu
                         post_fix_error_dict={}
                         run+=1
                         more_runs=False
+                        run_output[run] = {
+                            "pre_fix_error_list": pre_fix_error_list,
+                            "post_fix_error_list": post_fix_error_list,
+                            "pre_fix_error_dict": pre_fix_error_dict,
+                            "post_fix_error_dict": post_fix_error_dict
+                            }
                     elif breaking_failure_message:
                         post_fix_error_list=[]
                         post_fix_error_list = extract_error_file_paths(breaking_failure_message)
@@ -322,19 +331,46 @@ def read_updated_code_map(local_temp_dir):
             updated_code_map[remote_file_path] = updated_code.strip()
     return updated_code_map
 
+def create_run_data_backup(output_dir):
+    # Define paths for original file and backup directory
+    run_file_path = os.path.join(output_dir, "run_data.csv")
+    backup_dir = os.path.join(output_dir, "run_data_backup")
+
+    # Ensure backup directory exists
+    if not os.path.exists(backup_dir):
+        os.makedirs(backup_dir)
+
+    # Count existing backup files to determine the new backup file name
+    existing_backups = [f for f in os.listdir(backup_dir) if f.startswith("run_data_") and f.endswith(".csv")]
+    backup_number = len(existing_backups) + 1
+    backup_file_path = os.path.join(backup_dir, f"run_data_{backup_number}.csv")
+
+    # Copy the original file to the backup directory with the new name
+    shutil.copy2(run_file_path, backup_file_path)
+    print(f"Backup created: {backup_file_path}")
+
 # Main function
 def main():
+   
     args = parse_arguments()
     #check that output directory exists
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
-    new_run=False    
+       
+    #check if debug is set
     if args.debug:
       debug=True
     else:
-      debug=False  
-    if  not os.path.exists(os.path.join(args.output_dir, "run_data.csv")):
-        new_run=True;    
+      debug=False 
+
+    #check if it is a new run or not
+    new_run=False
+    run_output_path=os.path.join(args.output_dir, "run_data.csv") 
+    new_run = not os.path.exists(run_output_path) or os.stat(run_output_path).st_size == 0
+
+    if not new_run:
+        create_run_data_backup(args.output_dir) #create copy of run_data
+    
     with open(os.path.join(args.output_dir, "run_data.csv"), 'a') as f:
         if new_run:
             f.write("CommitID,Prefix_Files,Postfix_Files,Fixed_Files, Unfixed_Files, New_Errors_Files, Prefix_Errors, Postfix_Errors, Fixed_Errors,Unfixed_Errors,New_Errors \n")
@@ -343,7 +379,7 @@ def main():
             if args.specific_file:
                 specific_file_path = os.path.join(args.json_folder_path, args.specific_file)
                 logger=setup_logger(f"{args.specific_file.replace(".json","")}.log",args.output_dir)
-                docker_handler = DockerHandler(hostname, username, ssh_key_path,args.output_dir,ssh_passphrase,logger)
+                docker_handler = DockerHandler(hostname, username, ssh_key_path,args.output_dir,ssh_passphrase,args.docker_modeode,logger)
                 if os.path.exists(specific_file_path):
                     library = create_library_from_json(load_json_file(specific_file_path),"")
                     pre_fix_num,post_fix_num=process_json_file(logger,docker_handler, specific_file_path,args.no_download_files,args.output_dir,library,
@@ -357,10 +393,11 @@ def main():
                     files_list=select_random_files(args.json_folder_path,args.category,args.limit_files)
                 else:
                     files_list = [f for f in os.listdir(args.json_folder_path) if os.path.isfile(os.path.join(args.json_folder_path, f)) and f.endswith('.json')]       
-
+                
                 #filter already processed files if any
                 processed_files=get_processed_files(os.path.join(args.output_dir,"logs"))
-                docker_handler = DockerHandler(hostname, username, ssh_key_path,args.output_dir,ssh_passphrase)
+
+                docker_handler = DockerHandler(hostname, username, ssh_key_path,args.output_dir,ssh_passphrase,args.docker_mode)
                 for filename in files_list:
                     if filename.endswith('.json'):
                         if filename.replace('.json', '') in processed_files:
